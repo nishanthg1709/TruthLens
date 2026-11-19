@@ -652,3 +652,695 @@ def test_18_neutral_language_invariants() -> None:
     assert "is forged" not in combined_text
     assert "is ai-generated" not in combined_text
     assert "authenticity score" not in combined_text
+
+
+# ==============================================================================
+# PHASE 3.1 CORRECTIVE TESTS: TL-P3-001, TL-P3-002, TL-P3-003
+# ==============================================================================
+
+
+def test_tl_p3_001_scenario_a_noise_alone_elevated_remains_isolated() -> None:
+    """TL-P3-001 Scenario A: Noise alone elevated does not double-count with Spatial.
+
+    - Noise: notable (high residual dispersion)
+    - Compression: typical
+    - Metadata: typical (no software tag)
+    - Frequency: typical
+    - Spatial: peak deviation >= 2.0 due to the same noise feature
+
+    Expected:
+    - Independent domain count with observations is exactly 1 (Noise).
+    - Overall relationship remains isolated_observation.
+    - Spatial data describes localized region without causing multi-domain corroboration.
+    """
+    meta = AnalysisItem(
+        name="metadata",
+        status="completed",
+        details=MetadataDetails(exif_present=True, camera_make="Nikon"),
+    )
+    ela = AnalysisItem(
+        name="ela",
+        status="completed",
+        details=ELADetails(
+            recompression_quality=90,
+            scale_factor=10.0,
+            mean_difference=2.0,
+            median_difference=1.8,
+            max_difference=10.0,
+            p95_difference=5.0,
+            p99_difference=8.0,
+            regional_summary={"mean_spread": 1.0},
+        ),
+    )
+    noise = AnalysisItem(
+        name="noise",
+        status="completed",
+        details=NoiseDetails(
+            smoothing_sigma=1.0,
+            residual_mean=0.0,
+            residual_std=8.0,
+            mean_absolute_residual=6.0,
+            median_absolute_residual=5.0,
+            max_absolute_residual=30.0,
+            p95_absolute_residual=15.0,
+            p99_absolute_residual=22.0,
+            regional_summary={"std_min": 2.0, "std_max": 8.5, "std_mean": 4.0},
+        ),
+    )
+    freq = AnalysisItem(
+        name="frequency",
+        status="completed",
+        details=FrequencyDetails(
+            analysis_width=64,
+            analysis_height=64,
+            original_width=64,
+            original_height=64,
+            is_downsampled=False,
+            total_non_dc_power=1000.0,
+            low_frequency_power=500.0,
+            mid_frequency_power=300.0,
+            high_frequency_power=200.0,
+            low_frequency_energy_pct=50.0,
+            mid_frequency_energy_pct=30.0,
+            high_frequency_energy_pct=20.0,
+            spectral_centroid=0.35,
+            spectral_entropy=0.75,
+        ),
+    )
+    anomalies = [
+        _make_dummy_regional_anomaly(
+            f"r{r}_c{c}",
+            r,
+            c,
+            dev_score=2.8 if (r == 0 and c == 0) else 0.2,
+            z_scores={"noise_residual_std": 2.8} if (r == 0 and c == 0) else {"noise_residual_std": 0.1},
+        )
+        for r in range(4)
+        for c in range(4)
+    ]
+    reg = AnalysisItem(
+        name="regional",
+        status="completed",
+        details=RegionalAnomalyDetails(
+            max_deviation_score=2.8,
+            mean_deviation_score=0.4,
+            highest_deviation_region_id="r0_c0",
+            regional_anomalies=anomalies,
+        ),
+    )
+
+    details = synthesize_evidence([meta, ela, noise, freq, reg], image_format="JPEG")
+
+    # Independent domain tally
+    assert details.evidence_summary.domains_available == 4
+    assert details.evidence_summary.domains_with_observations == 1
+    assert details.evidence_summary.relationship == "isolated_observation"
+    assert details.evidence_summary.primary_contributing_domains == ["noise"]
+
+    # Spatial Consistency provides supporting localization but did NOT double-count
+    spat_dom = next(d for d in details.domains if d.domain_id == "spatial")
+    assert spat_dom.has_notable_variation is True
+    assert "r0_c0" in details.evidence_summary.synthesis_statement
+    assert "Noise" in details.evidence_summary.synthesis_statement
+
+    # Cross-domain coincident observation must NOT be generated for single-domain elevation
+    obs_cross = [obs for obs in details.key_observations if obs.observation_id == "OBS-CROSS-001"]
+    assert len(obs_cross) == 0
+
+
+def test_tl_p3_001_scenario_b_noise_and_compression_converge_in_same_region() -> None:
+    """TL-P3-001 Scenario B: Noise and Compression elevated in the same region.
+
+    Expected:
+    - Exactly 2 independent domains with observations (compression, noise).
+    - Spatial overlap confirms convergence in r1_c1.
+    - Relationship is converging_observations.
+    - Spatial Consistency itself is NOT counted as a 3rd domain.
+    """
+    meta = AnalysisItem(name="metadata", status="completed", details=MetadataDetails(exif_present=False))
+    ela = AnalysisItem(
+        name="ela",
+        status="completed",
+        details=ELADetails(
+            recompression_quality=90,
+            scale_factor=10.0,
+            mean_difference=12.0,
+            median_difference=10.0,
+            max_difference=45.0,
+            p95_difference=25.0,
+            p99_difference=35.0,
+            regional_summary={"mean_spread": 6.5},
+            threshold_percentages={"above_20": 15.0},
+        ),
+    )
+    noise = AnalysisItem(
+        name="noise",
+        status="completed",
+        details=NoiseDetails(
+            smoothing_sigma=1.0,
+            residual_mean=0.0,
+            residual_std=8.0,
+            mean_absolute_residual=6.0,
+            median_absolute_residual=5.0,
+            max_absolute_residual=30.0,
+            p95_absolute_residual=15.0,
+            p99_absolute_residual=22.0,
+            regional_summary={"std_min": 2.0, "std_max": 8.5, "std_mean": 4.0},
+        ),
+    )
+    freq = AnalysisItem(
+        name="frequency",
+        status="completed",
+        details=FrequencyDetails(
+            analysis_width=64,
+            analysis_height=64,
+            original_width=64,
+            original_height=64,
+            is_downsampled=False,
+            total_non_dc_power=1000.0,
+            low_frequency_power=500.0,
+            mid_frequency_power=300.0,
+            high_frequency_power=200.0,
+            low_frequency_energy_pct=50.0,
+            mid_frequency_energy_pct=30.0,
+            high_frequency_energy_pct=20.0,
+            spectral_centroid=0.35,
+            spectral_entropy=0.75,
+        ),
+    )
+    # Tile r1_c1 exhibits elevated noise AND elevated compression
+    anomalies = [
+        _make_dummy_regional_anomaly(
+            f"r{r}_c{c}",
+            r,
+            c,
+            dev_score=2.5 if (r == 1 and c == 1) else 0.2,
+            z_scores={
+                "noise_residual_std": 2.5,
+                "ela_mean": 2.2,
+            }
+            if (r == 1 and c == 1)
+            else {"noise_residual_std": 0.1, "ela_mean": 0.1},
+        )
+        for r in range(4)
+        for c in range(4)
+    ]
+    reg = AnalysisItem(
+        name="regional",
+        status="completed",
+        details=RegionalAnomalyDetails(
+            max_deviation_score=2.5,
+            mean_deviation_score=0.4,
+            highest_deviation_region_id="r1_c1",
+            regional_anomalies=anomalies,
+        ),
+    )
+
+    details = synthesize_evidence([meta, ela, noise, freq, reg], image_format="JPEG")
+
+    assert details.evidence_summary.domains_available == 4
+    # Exactly 2 independent domains, NOT 3
+    assert details.evidence_summary.domains_with_observations == 2
+    assert set(details.evidence_summary.primary_contributing_domains) == {"compression", "noise"}
+    assert details.evidence_summary.relationship == "converging_observations"
+    assert "r1_c1" in details.evidence_summary.synthesis_statement
+
+
+def test_tl_p3_001_scenario_c_noise_and_compression_in_disjoint_regions() -> None:
+    """TL-P3-001 Scenario C: Noise and Compression elevated in different, disjoint regions.
+
+    Expected:
+    - Exactly 2 independent domains with observations.
+    - No spatial convergence because the regional observations do not overlap.
+    - Relationship is mixed_observations.
+    """
+    meta = AnalysisItem(name="metadata", status="completed", details=MetadataDetails(exif_present=False))
+    ela = AnalysisItem(
+        name="ela",
+        status="completed",
+        details=ELADetails(
+            recompression_quality=90,
+            scale_factor=10.0,
+            mean_difference=12.0,
+            median_difference=10.0,
+            max_difference=45.0,
+            p95_difference=25.0,
+            p99_difference=35.0,
+            regional_summary={"mean_spread": 6.5},
+            threshold_percentages={"above_20": 15.0},
+        ),
+    )
+    noise = AnalysisItem(
+        name="noise",
+        status="completed",
+        details=NoiseDetails(
+            smoothing_sigma=1.0,
+            residual_mean=0.0,
+            residual_std=8.0,
+            mean_absolute_residual=6.0,
+            median_absolute_residual=5.0,
+            max_absolute_residual=30.0,
+            p95_absolute_residual=15.0,
+            p99_absolute_residual=22.0,
+            regional_summary={"std_min": 2.0, "std_max": 8.5, "std_mean": 4.0},
+        ),
+    )
+    freq = AnalysisItem(
+        name="frequency",
+        status="completed",
+        details=FrequencyDetails(
+            analysis_width=64,
+            analysis_height=64,
+            original_width=64,
+            original_height=64,
+            is_downsampled=False,
+            total_non_dc_power=1000.0,
+            low_frequency_power=500.0,
+            mid_frequency_power=300.0,
+            high_frequency_power=200.0,
+            low_frequency_energy_pct=50.0,
+            mid_frequency_energy_pct=30.0,
+            high_frequency_energy_pct=20.0,
+            spectral_centroid=0.35,
+            spectral_entropy=0.75,
+        ),
+    )
+    # Tile r0_c0 has elevated Noise only; Tile r3_c3 has elevated Compression only
+    anomalies = [
+        _make_dummy_regional_anomaly(
+            f"r{r}_c{c}",
+            r,
+            c,
+            dev_score=2.0 if (r in (0, 3) and c in (0, 3)) else 0.2,
+            z_scores={
+                "noise_residual_std": 2.5 if (r == 0 and c == 0) else 0.1,
+                "ela_mean": 2.5 if (r == 3 and c == 3) else 0.1,
+            },
+        )
+        for r in range(4)
+        for c in range(4)
+    ]
+    reg = AnalysisItem(
+        name="regional",
+        status="completed",
+        details=RegionalAnomalyDetails(
+            max_deviation_score=2.5,
+            mean_deviation_score=0.4,
+            highest_deviation_region_id="r0_c0",
+            regional_anomalies=anomalies,
+        ),
+    )
+
+    details = synthesize_evidence([meta, ela, noise, freq, reg], image_format="JPEG")
+
+    assert details.evidence_summary.domains_available == 4
+    assert details.evidence_summary.domains_with_observations == 2
+    assert set(details.evidence_summary.primary_contributing_domains) == {"compression", "noise"}
+    # Disjoint spatial regions -> mixed_observations, not converging
+    assert details.evidence_summary.relationship == "mixed_observations"
+    assert "without spatial convergence" in details.evidence_summary.synthesis_statement
+
+
+def test_tl_p3_001_spatial_alone_cannot_trigger_observations() -> None:
+    """TL-P3-001: Spatial variation alone cannot trigger observations if all independent domains are typical."""
+    meta = AnalysisItem(name="metadata", status="completed", details=MetadataDetails(exif_present=False))
+    ela = AnalysisItem(
+        name="ela",
+        status="completed",
+        details=ELADetails(
+            recompression_quality=90,
+            scale_factor=10.0,
+            mean_difference=2.0,
+            median_difference=1.8,
+            max_difference=10.0,
+            p95_difference=5.0,
+            p99_difference=8.0,
+            regional_summary={"mean_spread": 1.0},
+        ),
+    )
+    noise = AnalysisItem(
+        name="noise",
+        status="completed",
+        details=NoiseDetails(
+            smoothing_sigma=1.0,
+            residual_mean=0.0,
+            residual_std=1.0,
+            mean_absolute_residual=0.8,
+            median_absolute_residual=0.5,
+            max_absolute_residual=5.0,
+            p95_absolute_residual=2.0,
+            p99_absolute_residual=3.0,
+            regional_summary={"std_min": 0.8, "std_max": 1.2, "std_mean": 1.0},
+        ),
+    )
+    freq = AnalysisItem(
+        name="frequency",
+        status="completed",
+        details=FrequencyDetails(
+            analysis_width=64,
+            analysis_height=64,
+            original_width=64,
+            original_height=64,
+            is_downsampled=False,
+            total_non_dc_power=1000.0,
+            low_frequency_power=500.0,
+            mid_frequency_power=300.0,
+            high_frequency_power=200.0,
+            low_frequency_energy_pct=50.0,
+            mid_frequency_energy_pct=30.0,
+            high_frequency_energy_pct=20.0,
+            spectral_centroid=0.35,
+            spectral_entropy=0.75,
+        ),
+    )
+    # Regional anomaly has one tile with high deviation due to texture gradient
+    anomalies = [
+        _make_dummy_regional_anomaly(
+            f"r{r}_c{c}",
+            r,
+            c,
+            dev_score=2.5 if (r == 0 and c == 0) else 0.2,
+            z_scores={"mean_gradient": 2.5} if (r == 0 and c == 0) else {"mean_gradient": 0.1},
+        )
+        for r in range(4)
+        for c in range(4)
+    ]
+    reg = AnalysisItem(
+        name="regional",
+        status="completed",
+        details=RegionalAnomalyDetails(
+            max_deviation_score=2.5,
+            mean_deviation_score=0.4,
+            highest_deviation_region_id="r0_c0",
+            regional_anomalies=anomalies,
+        ),
+    )
+
+    details = synthesize_evidence([meta, ela, noise, freq, reg], image_format="JPEG")
+
+    assert details.evidence_summary.domains_with_observations == 0
+    assert details.evidence_summary.relationship == "no_notable_variation"
+
+
+# ==============================================================================
+# TL-P3-002: REGIONAL CLASSIFICATION PRECEDENCE TESTS
+# ==============================================================================
+
+
+def test_tl_p3_002_zero_domains_low_composite_is_low() -> None:
+    """TL-P3-002 Table Row 1: domain_count=0, comp_dev=0.2 -> classified as 'low'."""
+    tile = _make_dummy_regional_anomaly(
+        "r0_c0", 0, 0, dev_score=0.2,
+        z_scores={"mean_gradient": 0.2, "noise_residual_std": 0.2, "ela_mean": 0.2},
+    )
+    reg = AnalysisItem(
+        name="regional",
+        status="completed",
+        details=RegionalAnomalyDetails(
+            max_deviation_score=0.2,
+            mean_deviation_score=0.2,
+            regional_anomalies=[tile],
+        ),
+    )
+    details = synthesize_evidence([reg])
+    s_tile = details.regional_synthesis.tiles[0]
+
+    assert s_tile.domain_count_with_variation == 0
+    assert s_tile.variation_level == "low"
+    assert "r0_c0" in details.regional_synthesis.low_variation_regions
+    assert "r0_c0" not in details.regional_synthesis.single_domain_regions
+    assert "r0_c0" not in details.regional_synthesis.elevated_regions
+    assert s_tile.summary == "Measurements are highly uniform and match image-wide medians."
+
+
+def test_tl_p3_002_zero_domains_typical_composite_is_typical() -> None:
+    """TL-P3-002 Table Row 2: domain_count=0, comp_dev=0.8 -> classified as 'typical'."""
+    tile = _make_dummy_regional_anomaly(
+        "r0_c0", 0, 0, dev_score=0.8,
+        z_scores={"mean_gradient": 0.8, "noise_residual_std": 0.8, "ela_mean": 0.8},
+    )
+    reg = AnalysisItem(
+        name="regional",
+        status="completed",
+        details=RegionalAnomalyDetails(
+            max_deviation_score=0.8,
+            mean_deviation_score=0.8,
+            regional_anomalies=[tile],
+        ),
+    )
+    details = synthesize_evidence([reg])
+    s_tile = details.regional_synthesis.tiles[0]
+
+    assert s_tile.domain_count_with_variation == 0
+    assert s_tile.variation_level == "typical"
+    assert "r0_c0" not in details.regional_synthesis.low_variation_regions
+    assert "r0_c0" not in details.regional_synthesis.single_domain_regions
+    assert "r0_c0" not in details.regional_synthesis.elevated_regions
+
+
+def test_tl_p3_002_single_domain_low_composite_never_low() -> None:
+    """TL-P3-002 Table Row 3: domain_count=1, comp_dev=0.38 <= 0.4.
+
+    A region with an elevated domain must NEVER receive a 'low' variation label.
+    It must be 'typical', preserving the isolated elevation in single_domain_regions and summary.
+    """
+    tile = _make_dummy_regional_anomaly(
+        "r0_c0", 0, 0, dev_score=0.38,
+        z_scores={
+            "mean_gradient": 1.9,  # Texture elevated (z >= 1.8)
+            "std_luminance": 0.0,
+            "noise_residual_std": 0.0,
+            "ela_mean": 0.0,
+            "regional_fft_high_freq_ratio": 0.0,
+        },
+    )
+    reg = AnalysisItem(
+        name="regional",
+        status="completed",
+        details=RegionalAnomalyDetails(
+            max_deviation_score=0.38,
+            mean_deviation_score=0.38,
+            regional_anomalies=[tile],
+        ),
+    )
+    details = synthesize_evidence([reg])
+    s_tile = details.regional_synthesis.tiles[0]
+
+    assert s_tile.domain_count_with_variation == 1
+    assert s_tile.contributing_domains == ["Texture"]
+    # Must NOT be 'low'
+    assert s_tile.variation_level != "low"
+    assert s_tile.variation_level == "typical"
+    # Consistency between summary and region lists
+    assert "r0_c0" in details.regional_synthesis.single_domain_regions
+    assert "r0_c0" not in details.regional_synthesis.low_variation_regions
+    assert "Isolated variation in Texture domain" in s_tile.summary
+
+
+def test_tl_p3_002_single_domain_elevated_composite() -> None:
+    """TL-P3-002 Table Row 4: domain_count=1, comp_dev=1.58 >= 1.5 -> 'elevated'."""
+    tile = _make_dummy_regional_anomaly(
+        "r0_c0", 0, 0, dev_score=1.58,
+        z_scores={
+            "mean_gradient": 3.5,  # Texture strongly elevated
+            "std_luminance": 1.1,
+            "noise_residual_std": 1.1,
+            "ela_mean": 1.1,
+            "regional_fft_high_freq_ratio": 1.1,
+        },
+    )
+    reg = AnalysisItem(
+        name="regional",
+        status="completed",
+        details=RegionalAnomalyDetails(
+            max_deviation_score=1.58,
+            mean_deviation_score=1.58,
+            regional_anomalies=[tile],
+        ),
+    )
+    details = synthesize_evidence([reg])
+    s_tile = details.regional_synthesis.tiles[0]
+
+    assert s_tile.domain_count_with_variation == 1
+    assert s_tile.variation_level == "elevated"
+    assert "r0_c0" in details.regional_synthesis.elevated_regions
+    assert "r0_c0" in details.regional_synthesis.single_domain_regions
+    assert "r0_c0" not in details.regional_synthesis.low_variation_regions
+
+
+def test_tl_p3_002_two_domains_elevated_regardless_of_low_composite() -> None:
+    """TL-P3-002 Table Row 5: domain_count=2, comp_dev=0.86 -> 'elevated'."""
+    tile = _make_dummy_regional_anomaly(
+        "r0_c0", 0, 0, dev_score=0.86,
+        z_scores={
+            "mean_gradient": 2.0,  # Texture
+            "noise_residual_std": 2.0,  # Noise
+            "std_luminance": 0.1,
+            "ela_mean": 0.1,
+            "regional_fft_high_freq_ratio": 0.1,
+        },
+    )
+    reg = AnalysisItem(
+        name="regional",
+        status="completed",
+        details=RegionalAnomalyDetails(
+            max_deviation_score=0.86,
+            mean_deviation_score=0.86,
+            regional_anomalies=[tile],
+        ),
+    )
+    details = synthesize_evidence([reg])
+    s_tile = details.regional_synthesis.tiles[0]
+
+    assert s_tile.domain_count_with_variation == 2
+    assert s_tile.is_multi_domain_variation is True
+    assert s_tile.variation_level == "elevated"
+    assert "r0_c0" in details.regional_synthesis.elevated_regions
+    assert "r0_c0" in details.regional_synthesis.multi_domain_regions
+    assert "r0_c0" not in details.regional_synthesis.low_variation_regions
+
+
+def test_tl_p3_002_three_domains_divergent() -> None:
+    """TL-P3-002 Table Row 6: domain_count=3 -> 'divergent'."""
+    tile = _make_dummy_regional_anomaly(
+        "r0_c0", 0, 0, dev_score=2.0,
+        z_scores={
+            "mean_gradient": 2.0,  # Texture
+            "noise_residual_std": 2.0,  # Noise
+            "ela_mean": 2.0,  # Compression
+            "std_luminance": 0.5,
+        },
+    )
+    reg = AnalysisItem(
+        name="regional",
+        status="completed",
+        details=RegionalAnomalyDetails(
+            max_deviation_score=2.0,
+            mean_deviation_score=2.0,
+            regional_anomalies=[tile],
+        ),
+    )
+    details = synthesize_evidence([reg])
+    s_tile = details.regional_synthesis.tiles[0]
+
+    assert s_tile.domain_count_with_variation == 3
+    assert s_tile.variation_level == "divergent"
+    assert "r0_c0" in details.regional_synthesis.elevated_regions
+    assert "r0_c0" in details.regional_synthesis.multi_domain_regions
+
+
+# ==============================================================================
+# TL-P3-003: GROUPED COMPOSITE DEVIATION WEIGHTING TESTS
+# ==============================================================================
+
+
+def test_tl_p3_003_correlated_gradient_metrics_do_not_inflate_composite() -> None:
+    """TL-P3-003: 3 correlated gradient metrics do not artificially inflate the grouped composite.
+
+    Raw unweighted average would be: (3.0*3 + 0.2*3) / 6 = 1.60 (elevated).
+    Grouped domain calculation: Texture=3.0, Noise=0.2, Compression=0.2, Luminance=0.2
+    Grouped composite = (3.0 + 0.2 + 0.2 + 0.2) / 4 = 0.90 (typical, not elevated!).
+    """
+    tile = _make_dummy_regional_anomaly(
+        "r0_c0", 0, 0, dev_score=1.60,
+        z_scores={
+            "mean_gradient": 3.0,
+            "std_gradient": 3.0,
+            "edge_density": 3.0,
+            "noise_residual_std": 0.2,
+            "ela_mean": 0.2,
+            "std_luminance": 0.2,
+        },
+    )
+    reg = AnalysisItem(
+        name="regional",
+        status="completed",
+        details=RegionalAnomalyDetails(
+            max_deviation_score=1.60,
+            mean_deviation_score=1.60,
+            regional_anomalies=[tile],
+        ),
+    )
+    details = synthesize_evidence([reg])
+    s_tile = details.regional_synthesis.tiles[0]
+
+    assert s_tile.contributing_domains == ["Texture"]
+    assert s_tile.domain_count_with_variation == 1
+    # Grouped composite is 0.90, which is < 1.5, so tile is NOT elevated
+    assert s_tile.variation_level == "typical"
+    assert "r0_c0" not in details.regional_synthesis.elevated_regions
+
+
+def test_tl_p3_003_only_one_gradient_metric_elevated() -> None:
+    """TL-P3-003: A single elevated gradient metric averaged with typical gradient metrics does not exceed threshold."""
+    tile = _make_dummy_regional_anomaly(
+        "r0_c0", 0, 0, dev_score=0.8,
+        z_scores={
+            "mean_gradient": 0.3,
+            "std_gradient": 0.3,
+            "edge_density": 3.0,  # only edge density is elevated
+        },
+    )
+    reg = AnalysisItem(
+        name="regional",
+        status="completed",
+        details=RegionalAnomalyDetails(
+            max_deviation_score=0.8,
+            mean_deviation_score=0.8,
+            regional_anomalies=[tile],
+        ),
+    )
+    details = synthesize_evidence([reg])
+    s_tile = details.regional_synthesis.tiles[0]
+
+    # Texture domain average: (0.3 + 0.3 + 3.0) / 3 = 1.20 (< 1.8 threshold)
+    assert s_tile.contributing_domains == []
+    assert s_tile.domain_count_with_variation == 0
+
+
+def test_tl_p3_003_png_format_without_ela_no_dilution() -> None:
+    """TL-P3-003: In PNG format (no ELA), composite averages across available domains without dilution."""
+    tile = _make_dummy_regional_anomaly(
+        "r0_c0", 0, 0, dev_score=2.4,
+        z_scores={
+            "mean_gradient": 2.4,
+            "std_luminance": 2.4,
+            "noise_residual_std": 2.4,
+            # No ela_mean or ela_variance
+        },
+    )
+    reg = AnalysisItem(
+        name="regional",
+        status="completed",
+        details=RegionalAnomalyDetails(
+            max_deviation_score=2.4,
+            mean_deviation_score=2.4,
+            regional_anomalies=[tile],
+        ),
+    )
+    details = synthesize_evidence([reg], image_format="PNG")
+    s_tile = details.regional_synthesis.tiles[0]
+
+    # 3 domains available (Texture, Luminance, Noise), all z=2.4
+    # Grouped composite = (2.4 + 2.4 + 2.4) / 3 = 2.40 (not diluted by missing ELA)
+    assert s_tile.domain_count_with_variation == 3
+    assert s_tile.variation_level == "divergent"
+
+
+def test_tl_p3_003_zero_valued_features_and_empty_tiles() -> None:
+    """TL-P3-003: Tiles with empty z_scores handle safely without division by zero."""
+    tile = _make_dummy_regional_anomaly("r0_c0", 0, 0, dev_score=0.0, z_scores={})
+    reg = AnalysisItem(
+        name="regional",
+        status="completed",
+        details=RegionalAnomalyDetails(
+            max_deviation_score=0.0,
+            mean_deviation_score=0.0,
+            regional_anomalies=[tile],
+        ),
+    )
+    details = synthesize_evidence([reg])
+    s_tile = details.regional_synthesis.tiles[0]
+
+    assert s_tile.domain_count_with_variation == 0
+    assert s_tile.variation_level == "low"

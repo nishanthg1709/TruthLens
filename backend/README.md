@@ -309,27 +309,43 @@ If $\text{MAD} = 0$, standard deviation is used as fallback. If $\sigma = 0$ (e.
 - Legend color bar at the bottom indicating scale and explicit non-tampering disclaimer.
 - Base64 encoded as PNG data URL (`visualization_data_url`).
 
-## Evidence Aggregation & Synthesis Engine (Phase 3)
+## Evidence Aggregation & Synthesis Engine (Phase 3 & 3.1)
 
 ### Methodology & Principles
 
-The Phase 3 Synthesis Engine aggregates individual forensic measurements into five distinct domains:
+The Phase 3 Synthesis Engine aggregates individual forensic measurements into four independent physical/data evidence domains, supported by a spatial localization dimension:
+
 1. **Metadata & Provenance:** Camera hardware tags, timestamps, editing/export software signatures, metadata completeness. (Absence of metadata is standard for web/social media images and is never treated as manipulation).
 2. **Compression & Recompression (ELA):** JPEG recompression error magnitudes and regional error spread relative to an analysis baseline.
 3. **Noise & Texture:** Gaussian low-pass residual standard deviation and regional noise dispersion.
 4. **Frequency Spectrum:** 2D Fast Fourier Transform radial energy distribution (low, mid, high bands), centroid, and spectral entropy.
-5. **Spatial Consistency:** Regional grid anomaly scores, multi-feature deviation, and spatial neighbor contrast.
+5. **Spatial Consistency (Supporting Dimension):** Regional grid anomaly scores, multi-feature deviation, spatial neighbor contrast, and regional convergence. Spatial Consistency functions as a supporting analytical dimension for spatial localization and cross-domain overlap; it does not independently inflate the count of independent evidence domains (TL-P3-001).
 
-### Correlated Feature Weighting
+### Correlated Feature Weighting & Grouped Composite Deviation (TL-P3-003)
 
-To prevent multi-collinear metrics (e.g. `mean_gradient`, `std_gradient`, and `edge_density` from gradient magnitude; `noise_residual_std` and `noise_mean_abs` from residual arrays) from dominating composite scores, Phase 3 groups correlated measurements into domain-level scores first. Texture metrics are evaluated collectively as a single Texture domain, preventing them from tripling their weight in multi-domain synthesis.
+To prevent multi-collinear metrics (e.g. `mean_gradient`, `std_gradient`, and `edge_density` from gradient magnitude; `noise_residual_std` and `noise_mean_abs` from residual arrays) from dominating regional composite scores, regional synthesis groups correlated measurements into domain-level scores first:
+- **Texture Domain:** Arithmetic mean of available gradient and edge density metrics.
+- **Luminance Domain:** Arithmetic mean of luminance standard deviation and mean luminance.
+- **Noise Domain:** Arithmetic mean of residual standard deviation and mean absolute residual.
+- **Compression Domain:** Arithmetic mean of ELA difference mean and variance.
+- **Frequency Domain:** Regional high-frequency energy ratio.
+
+The regional composite deviation score is computed as the arithmetic mean of available domain scores rather than unweighted raw features, ensuring that correlated metrics do not artificially inflate regional deviation. Missing domains (such as Compression on PNG images) are excluded without diluting the composite score.
+
+### Regional Classification Precedence (TL-P3-002)
+
+Regional tiles are classified deterministically based on domain elevation and composite deviation:
+- `divergent`: 3 or more contributing domains elevated ($Z \ge 1.8$) or composite deviation $\ge 3.0$.
+- `elevated`: 2 or more contributing domains elevated (multi-domain) or composite deviation $\ge 1.5$.
+- `low`: Strictly assigned only when **zero** contributing domains are elevated and composite deviation $\le 0.4$.
+- `typical`: Standard distribution; regions with an isolated elevated domain and composite deviation $< 1.5$ are classified as typical to preserve isolated elevation without contradictory low-variation labels.
 
 ### Cross-Domain Relationship Labels
 
 - `converging_observations`: Multiple independent evidence domains exhibit notable statistical variation with confirmed spatial convergence in the same physical regions.
-- `isolated_observation`: Exactly one evidence domain exhibits a notable statistical pattern, while all other independent domains remain within typical distributions.
-- `mixed_observations`: Multiple evidence domains exhibit statistical observations, but without spatial convergence in the same regions.
-- `no_notable_variation`: All evaluated domains display uniform, expected distributions.
+- `isolated_observation`: Exactly one independent evidence domain exhibits a notable statistical pattern, while all other independent domains remain within typical distributions. Supporting spatial analysis may describe regional localization.
+- `mixed_observations`: Multiple independent evidence domains exhibit statistical observations, but without spatial convergence in the same regions.
+- `no_notable_variation`: All evaluated independent domains display uniform, expected distributions.
 - `insufficient_evidence`: Fewer than two independent domains were available for evaluation.
 
 ### Structured Key Observations
