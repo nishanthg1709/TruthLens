@@ -1,36 +1,20 @@
-# TruthLens Frontend
+<div align="center">
+<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
+</div>
 
-A responsive React, TypeScript, and Vite frontend for explainable multimodal digital-forensics investigations.
+# Run and deploy your AI Studio app
 
-## Run
+This contains everything you need to run your app locally.
 
-```bash
-npm install
-npm run dev
-```
+View your app in AI Studio: https://ai.studio/apps/48d4f4a2-af75-4d6c-9197-c7637d8ca417
 
-## Validation
+## Run Locally
 
-```bash
-npm run lint
-npm run build
-npm run preview
-```
+**Prerequisites:**  Node.js
 
-## Backend configuration
 
-Copy `.env.example` to `.env.local`, then configure:
-
-- `VITE_TRUTHLENS_API_URL`: owned TruthLens backend base URL
-- `VITE_TRUTHLENS_ANALYSIS_PATH`: analysis submit endpoint; defaults to `/api/analyze`
-- `VITE_TRUTHLENS_REPORT_PATH`: reserved report endpoint
-
-No backend endpoint is contacted unless configured, and no third-party AI service receives uploaded media.
-
-## Structure
-
-- `src/components/layout`: reusable application shell
-- `src/components/ui`: reusable interface components
-- `src/pages`: routed pages
-- `src/services`: backend adapter and normalization
-- `src/types`: strict forensic result contracts
+1. Install dependencies:
+   `npm install`
+2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+3. Run the app:
+   `npm run dev`

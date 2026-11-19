@@ -1,0 +1,234 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pillar 1: Global Default-Deny Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global Hardened Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidProfile(data, userId) {
+      return data.keys().hasAll([
+          'uid',
+          'displayName',
+          'email',
+          'organization',
+          'roleTitle',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'uid',
+          'displayName',
+          'email',
+          'organization',
+          'roleTitle',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.uid is string
+        && isValidId(data.uid)
+        && data.uid == userId
+        && data.uid == request.auth.uid
+        && data.displayName is string
+        && data.displayName.size() >= 1
+        && data.displayName.size() <= 120
+        && data.email is string
+        && data.email.size() >= 3
+        && data.email.size() <= 254
+        && data.organization is string
+        && data.organization.size() <= 120
+        && data.roleTitle is string
+        && data.roleTitle.size() <= 100
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidCaseCategory(cat) {
+      return cat in [
+        'Media Verification',
+        'Disinformation Review',
+        'Deepfake Investigation',
+        'Document & Provenance',
+        'Incident Response',
+        'Academic Research'
+      ];
+    }
+
+    function isValidCaseStatus(st) {
+      return st in ['Active', 'In Review', 'Completed', 'Archived'];
+    }
+
+    function isValidCase(data, userId, caseId) {
+      return data.keys().hasAll([
+          'id',
+          'ownerId',
+          'caseReference',
+          'title',
+          'category',
+          'investigator',
+          'status',
+          'summary',
+          'evidenceCount',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id',
+          'ownerId',
+          'caseReference',
+          'title',
+          'category',
+          'investigator',
+          'status',
+          'summary',
+          'evidenceCount',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.id is string
+        && isValidId(data.id)
+        && data.id == caseId
+        && data.ownerId is string
+        && isValidId(data.ownerId)
+        && data.ownerId == userId
+        && data.ownerId == request.auth.uid
+        && data.caseReference is string
+        && data.caseReference.size() >= 1
+        && data.caseReference.size() <= 64
+        && data.title is string
+        && data.title.size() >= 1
+        && data.title.size() <= 180
+        && data.category is string
+        && isValidCaseCategory(data.category)
+        && data.investigator is string
+        && data.investigator.size() >= 1
+        && data.investigator.size() <= 120
+        && data.status is string
+        && isValidCaseStatus(data.status)
+        && data.summary is string
+        && data.summary.size() <= 1500
+        && (data.evidenceCount is int || data.evidenceCount is float)
+        && data.evidenceCount >= 0
+        && data.evidenceCount <= 1000
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // Collection: Investigator Profiles (PII Isolated, Strictly Owner-Only)
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && isOwner(userId);
+      allow list: if false;
+
+      allow create: if isVerifiedUser()
+        && isValidId(userId)
+        && isOwner(userId)
+        && isValidProfile(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser()
+        && isValidId(userId)
+        && isOwner(userId)
+        && isValidProfile(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'displayName',
+          'email',
+          'organization',
+          'roleTitle',
+          'updatedAt'
+        ]);
+
+      allow delete: if isVerifiedUser()
+        && isValidId(userId)
+        && isOwner(userId);
+
+      // Subcollection: Investigator Cases (Master Gate + Owner Enforced)
+      match /cases/{caseId} {
+        allow get: if isSignedIn()
+          && isValidId(userId)
+          && isValidId(caseId)
+          && isOwner(userId)
+          && existing().ownerId == request.auth.uid;
+
+        allow list: if isSignedIn()
+          && isValidId(userId)
+          && isOwner(userId)
+          && resource.data.ownerId == request.auth.uid;
+
+        allow create: if isVerifiedUser()
+          && isValidId(userId)
+          && isValidId(caseId)
+          && isOwner(userId)
+          && isValidCase(incoming(), userId, caseId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && exists(/databases/$(database)/documents/users/$(userId));
+
+        allow update: if isVerifiedUser()
+          && isValidId(userId)
+          && isValidId(caseId)
+          && isOwner(userId)
+          && isValidCase(incoming(), userId, caseId)
+          && existing().ownerId == request.auth.uid
+          && existing().status != 'Archived'
+          && incoming().id == existing().id
+          && incoming().ownerId == existing().ownerId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && exists(/databases/$(database)/documents/users/$(userId))
+          && (
+            // Action: Update case details or status
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'title',
+              'category',
+              'investigator',
+              'status',
+              'summary',
+              'evidenceCount',
+              'updatedAt'
+            ])
+            ||
+            // Action: Update lifecycle status only
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'status',
+              'updatedAt'
+            ])
+          );
+
+        allow delete: if isVerifiedUser()
+          && isValidId(userId)
+          && isValidId(caseId)
+          && isOwner(userId)
+          && existing().ownerId == request.auth.uid;
+      }
+    }
+  }
+}

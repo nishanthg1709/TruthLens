@@ -1,0 +1,2189 @@
+# TRUTHLENS — FULL APPLICATION GENERATION MASTER PROMPT
+
+Act as a senior product designer, principal frontend engineer, UX architect, cybersecurity product designer, and full-stack application developer.
+
+Your task is to design and build **TruthLens**, a complete, premium, modern, interactive digital forensic investigation web application.
+
+Do not create a generic admin dashboard.
+
+Do not create merely a landing page.
+
+Do not create a static mockup.
+
+Build an entire application with functional navigation, realistic page layouts, reusable components, animations, interactive controls, responsive design, evidence workflows, analysis visualizations, report generation interfaces, and a clean architecture ready to connect to the existing FastAPI backend.
+
+The application should feel like a professional digital forensic investigation workstation used by media investigators, cybersecurity analysts, researchers, and digital evidence reviewers.
+
+---
+
+# 1. PROJECT IDENTITY
+
+Product Name: TruthLens
+
+Tagline: See beyond the image. Verify what is real.
+
+Domain: Digital Forensics, Media Authenticity Analysis, Cybersecurity, Scientific Evidence Verification.
+
+Hackathon: INNOVEDGE Innovation and Entrepreneurship Development Club Hackathon 2026.
+
+Problem Statement: Multimodal Digital Forensics and Deepfake Detection System.
+
+Primary objective:
+
+Develop a unified digital forensic platform that helps investigators examine digital media, identify suspicious manipulation indicators, inspect supporting evidence, understand limitations, and generate explainable forensic reports.
+
+TruthLens must NOT claim that it can definitively prove whether a media file is authentic or fake.
+
+The platform must prioritize:
+
+- Evidence over conclusions
+- Explainability over unexplained AI scores
+- Human review over automated verdicts
+- Transparency over exaggerated claims
+- Integrity and traceability
+- Responsible handling of digital evidence
+
+---
+
+# 2. PRODUCT VISION
+
+Build TruthLens as an integrated forensic analysis environment containing multiple specialized investigation workspaces.
+
+The experience should combine:
+
+- The precision of professional forensic tools
+- The visual sophistication of premium SaaS software
+- The usability of a modern investigation platform
+- The analytical clarity of scientific software
+- The cinematic visual appeal of a cybersecurity product
+
+Users should feel that they are working inside a sophisticated investigation laboratory.
+
+The interface must be visually impressive for a hackathon presentation while still being usable, credible, and practical.
+
+---
+
+# 3. DESIGN SYSTEM — FOLLOW STRICTLY
+
+## Overall visual direction
+
+Create a:
+
+"Dark Forensic Intelligence Workstation"
+
+Use a dark theme by default.
+
+The design should be:
+
+- Premium
+- Cinematic
+- Minimal but information-rich
+- Technical
+- Scientific
+- Professional
+- Futuristic without looking fictional
+- Clean and organized
+- Visually immersive
+
+Avoid:
+
+- Generic admin dashboard templates
+- Excessive rounded cards
+- Excessive glassmorphism
+- Excessive neon
+- Rainbow gradients
+- Hacker movie aesthetics
+- Green matrix effects
+- Random glowing borders
+- Oversized empty cards
+- Unnecessary decorative icons
+- Repetitive stock imagery
+- Fake AI confidence percentages
+- Fake forensic results
+
+## Color palette
+
+Background:
+#090D14
+
+Secondary background:
+#0E1520
+
+Panel background:
+#111B29
+
+Elevated surface:
+#172438
+
+Borders:
+#243348
+
+Primary accent — Electric Cyan:
+#37C8F5
+
+Secondary accent — Ice Blue:
+#82BFFF
+
+Success:
+#73D6A0
+
+Caution:
+#F5B84B
+
+Critical alert:
+#F05D67
+
+Muted text:
+#91A0B5
+
+Primary text:
+#E7EDF5
+
+Use cyan for interactive elements and active states.
+
+Use amber for caution and items requiring human review.
+
+Use red sparingly for serious alerts.
+
+Use green only for successful operations, processing completion, or integrity checks that actually succeeded.
+
+Never use color alone to communicate meaning. Pair indicators with labels and icons.
+
+## Typography
+
+Use:
+
+- Inter for general interface typography
+- JetBrains Mono for technical information
+
+Monospace font should be used for:
+
+- SHA-256 hashes
+- Evidence IDs
+- Timestamps
+- Metadata
+- Technical values
+- Processing identifiers
+
+Maintain a clear hierarchy of page titles, section titles, labels, values, descriptions, and technical details.
+
+---
+
+# 4. APPLICATION LAYOUT
+
+Build a complete application shell.
+
+## Desktop layout
+
+Use a fixed or collapsible left sidebar.
+
+The sidebar should have:
+
+- TruthLens logo and identity
+- Navigation groups
+- Active page indicator
+- Compact icon mode
+- Expand/collapse behavior
+- Tooltips when collapsed
+- System status indicator
+- Settings entry
+- User/workspace area
+
+The main content area should have:
+
+- Contextual page header
+- Breadcrumbs when appropriate
+- Page title
+- Description
+- Primary action
+- Search where relevant
+- Notifications
+- Backend connection status
+- Responsive content layout
+
+Use a professional grid system.
+
+The workspace should adapt to:
+
+- Large desktops
+- Standard laptops
+- Tablets
+- Mobile devices
+
+On mobile, transform the sidebar into a navigation drawer.
+
+---
+
+# 5. GLOBAL NAVIGATION
+
+Create the following navigation sections.
+
+## OVERVIEW
+
+1. Dashboard
+
+## INVESTIGATION
+
+2. New Investigation
+3. Evidence Workspace
+4. Image Forensics
+5. Video Forensics
+6. Audio Forensics
+7. Text & Context Analysis
+8. Cross-Modal Analysis
+9. Evidence Comparison
+
+## RECORDS
+
+10. Investigation History
+11. Evidence Vault
+12. Forensic Reports
+
+## SYSTEM
+
+13. Methodology & Limitations
+14. System Status
+15. Settings
+
+Every navigation item must open a real page or workspace.
+
+Do not create navigation items that lead to blank pages.
+
+If a capability is not implemented, create a polished, informative module page that explains its purpose, current availability, planned workflow, and integration status.
+
+---
+
+# 6. PAGE 1 — DASHBOARD / FORENSIC COMMAND CENTER
+
+Build an impressive professional dashboard.
+
+This is the first page users see.
+
+## Header
+
+Title:
+
+"Investigation Overview"
+
+Subtitle:
+
+"Monitor evidence, examine media, and manage forensic investigations."
+
+Include:
+
+- New Investigation button
+- Quick Analyze button
+- Backend status indicator
+- Search
+- Notifications
+
+## Hero section
+
+Create a premium hero area with:
+
+- Subtle forensic scan animation
+- Dark digital investigation visual
+- Animated cyan light accents
+- Small contextual text
+- A prominent "Start Investigation" action
+- A secondary "Analyze Evidence" action
+
+Avoid making the hero excessively tall.
+
+## Statistics
+
+Display dashboard metrics using compact cards:
+
+- Total Investigations
+- Evidence Analyzed
+- Reports Generated
+- Evidence Requiring Review
+
+These statistics must be derived from real application data when available.
+
+If no real data exists, show clearly identified demo/sample data or meaningful empty states.
+
+Never pretend sample data is real operational data.
+
+## Recent Investigations
+
+Create a table or card list with:
+
+- Investigation ID
+- Investigation title
+- Date created
+- Evidence count
+- Status
+- Last updated
+- Open investigation action
+
+## Evidence Activity
+
+Create a timeline showing:
+
+- Evidence uploaded
+- Analysis started
+- Analysis completed
+- Report generated
+- Human review added
+
+Clearly distinguish demo activity from actual user activity.
+
+## Quick Access Modules
+
+Create visual navigation cards for:
+
+- Image Forensics
+- Video Forensics
+- Audio Forensics
+- Text & Context
+- Cross-Modal Analysis
+
+Each card should have:
+
+- A relevant image or visual
+- A short description
+- Module status
+- Open workspace button
+
+---
+
+# 7. PAGE 2 — NEW INVESTIGATION
+
+Create a professional investigation creation workflow.
+
+The user should be able to:
+
+- Create an investigation
+- Enter investigation title
+- Enter case/reference ID
+- Add an optional description
+- Select investigation category
+- Add investigator name or team
+- Select relevant analysis modules
+- Attach evidence
+- Add contextual notes
+
+Use a polished form with clear validation.
+
+After creation, navigate into the Investigation Workspace.
+
+For frontend-only storage, use an appropriate persistence strategy such as localStorage for development.
+
+Never represent local demo data as server-backed permanent records.
+
+---
+
+# 8. PAGE 3 — EVIDENCE WORKSPACE
+
+Create a central investigation workspace.
+
+This should be one of the most important parts of the application.
+
+Include:
+
+- Investigation information
+- Evidence list
+- Upload evidence button
+- Evidence type indicators
+- Evidence status
+- Evidence metadata
+- SHA-256 identifier where available
+- Analysis status
+- Notes
+- Findings
+- Activity history
+- Related evidence
+
+Layout:
+
+Left panel:
+Evidence list and filters.
+
+Center panel:
+Selected evidence preview and inspection workspace.
+
+Right panel:
+Evidence details, metadata, findings, and analysis context.
+
+Support:
+
+- Selecting evidence
+- Switching evidence
+- Adding notes
+- Removing evidence from the workspace with confirmation
+- Viewing metadata
+- Opening specialized analysis
+- Search and filtering
+
+Preserve original evidence files during the active session.
+
+---
+
+# 9. PAGE 4 — IMAGE FORENSICS
+
+This is the primary functional forensic module because the existing backend currently supports image analysis.
+
+Make this page fully integration-ready.
+
+## Image upload interface
+
+Support:
+
+- Drag-and-drop
+- File picker
+- JPEG
+- PNG
+- WEBP
+
+Display file validation.
+
+Show:
+
+- File name
+- File size
+- Dimensions
+- File type
+- SHA-256 hash when calculated
+- Upload progress where possible
+
+Respect backend limits:
+
+- Maximum file size: 15 MB
+- Maximum dimension: 12,000 px
+- Maximum image area: 40 megapixels
+
+These limits should be configurable in the UI only if they match backend behavior.
+
+## Image analysis workflow
+
+Build the following stages:
+
+1. Select evidence
+2. Validate file
+3. Prepare analysis
+4. Submit to forensic engine
+5. Display processing progress
+6. Render results
+7. Allow evidence review
+8. Generate report
+
+Do not simulate successful backend analysis when the API is unavailable.
+
+When disconnected, show a clear backend-unavailable message.
+
+## Main image workspace
+
+Create a large image canvas.
+
+Include:
+
+- Image preview
+- Zoom in
+- Zoom out
+- Fit to screen
+- Reset zoom
+- Pan
+- Full-screen inspection
+- Original image view
+- Analysis view selector
+
+Use a professional image viewing layout.
+
+## Analysis view modes
+
+Create tabs or view selectors for:
+
+- Original
+- Error Level Analysis
+- Noise Residual
+- Frequency Analysis
+- Regional Analysis
+
+Only show analysis visualizations if actual backend results or valid derived visualizations exist.
+
+If a visualization cannot be generated from backend data, display its availability state rather than a fake image.
+
+## Image forensic findings panel
+
+Show the actual analysis output grouped into:
+
+### Metadata & Provenance
+
+Display:
+
+- Format
+- Dimensions
+- EXIF information
+- Available metadata fields
+- Metadata observations
+- Metadata limitations
+
+Do not expose sensitive GPS coordinates.
+
+### Compression & Recompression
+
+Display:
+
+- ELA observations
+- Compression-related indicators
+- Regional variation
+- Limitations
+
+### Noise & Texture
+
+Display:
+
+- Noise residual observations
+- Texture analysis
+- Regional variation
+- Relevant visualizations
+
+### Frequency Spectrum
+
+Display:
+
+- Frequency analysis
+- FFT-related observations
+- Available values
+- Visual representation when supported
+
+### Spatial Consistency
+
+Display:
+
+- Regional observations
+- Image regions
+- Anomaly indicators
+- Supporting observations
+
+## Region inspection
+
+Create a regional analysis workspace with a 4×4 grid overlay.
+
+Use consistent region IDs:
+
+r0_c0, r0_c1, r0_c2, r0_c3
+
+r1_c0, r1_c1, r1_c2, r1_c3
+
+r2_c0, r2_c1, r2_c2, r2_c3
+
+r3_c0, r3_c1, r3_c2, r3_c3
+
+Allow selecting a region.
+
+When a region is selected:
+
+- Highlight it in the image
+- Display its region ID
+- Display relevant backend observations
+- Show available domain signals
+- Explain why it was flagged
+- Display limitations
+
+Use neutral evidence-based labels.
+
+Never claim that a region is definitively manipulated.
+
+## Image analysis summary
+
+Create a summary panel that displays:
+
+- Analysis completion status
+- Independent evidence domains available
+- Number of regions requiring review
+- Observed indicators
+- Evidence strength descriptors only when justified
+- Limitations
+- Recommended manual checks
+
+Never convert uncalibrated heuristics into a probability of authenticity.
+
+Never label an image simply "REAL" or "FAKE."
+
+---
+
+# 10. PAGE 5 — VIDEO FORENSICS
+
+Create a complete video investigation interface.
+
+The module should be designed for future backend integration.
+
+## Video evidence intake
+
+Provide:
+
+- Drag-and-drop video upload
+- Video file selection
+- File information
+- Duration
+- Resolution
+- Frame rate
+- File size
+- SHA-256 hash when calculated
+
+## Video player workspace
+
+Create:
+
+- Video player
+- Play/pause
+- Timeline scrubber
+- Current timestamp
+- Frame stepping controls
+- Playback speed
+- Full-screen mode
+- Frame capture action
+
+## Timeline analysis
+
+Create a visual timeline for:
+
+- Scene changes
+- Extracted frames
+- Evidence markers
+- Text observations
+- Audio segments
+- Review markers
+
+## Frame analysis
+
+Provide an interface for:
+
+- Extracted frame thumbnails
+- Timestamped frame selection
+- Frame-by-frame inspection
+- Opening a frame in Image Forensics
+- Comparing frames
+
+## Video text analysis / OCR
+
+This is a required feature in the UI design.
+
+Create a dedicated video text analysis panel capable of displaying:
+
+- OCR extracted text
+- Timestamp of appearance
+- Text bounding region
+- Text changes across frames
+- Repeated text
+- Text appearance/disappearance
+- Text overlays
+- Subtitle and caption observations
+
+Create a text timeline with timestamped occurrences.
+
+Create a comparison view for text changes between frames.
+
+Create discrepancy indicators for review.
+
+Potential observations:
+
+- Text changed between frames
+- Text appeared or disappeared
+- Text moved position
+- Different wording appeared in similar scenes
+- OCR results differed between extracted frames
+
+Do not treat OCR discrepancies as proof of manipulation.
+
+OCR can fail because of:
+
+- Motion blur
+- Scene cuts
+- Camera movement
+- Occlusion
+- Compression
+- Lighting
+- Font changes
+- Low resolution
+
+If the video analysis backend is not implemented, mark the engine as "Not yet connected" or "Planned".
+
+The interface must remain visually complete without inventing results.
+
+---
+
+# 11. PAGE 6 — AUDIO FORENSICS
+
+Create a professional audio forensic workspace.
+
+## Audio intake
+
+Support UI for:
+
+- WAV
+- MP3
+- M4A
+- Other formats only when supported by the future backend
+
+Display:
+
+- File name
+- Duration
+- File size
+- Sample rate
+- Channels
+- SHA-256 hash when calculated
+
+## Audio workspace
+
+Create:
+
+- Waveform visualization
+- Playback controls
+- Timeline
+- Zoom
+- Segment selection
+- Audio amplitude display
+
+## Spectrogram
+
+Create a spectrogram panel with:
+
+- Frequency axis
+- Time axis
+- Intensity visualization
+- Zoom
+- Segment selection
+
+## Audio analysis panel
+
+Design interfaces for:
+
+- Audio integrity observations
+- Signal inconsistencies
+- Noise analysis
+- Spectral observations
+- Speech segment boundaries
+- Voice consistency indicators
+- Synthetic speech investigation
+- Audio metadata
+
+## Transcript
+
+Provide:
+
+- Transcript view
+- Timestamped words or segments
+- Transcript search
+- Audio-to-text alignment
+- Segment playback
+
+## Suspicious segment review
+
+Allow selecting a segment and displaying:
+
+- Timestamp
+- Duration
+- Observations
+- Supporting indicators
+- Limitations
+- Human review notes
+
+Do not claim voice cloning detection is functional without an implemented and validated engine.
+
+Mark unsupported features clearly.
+
+---
+
+# 12. PAGE 7 — TEXT & CONTEXT ANALYSIS
+
+Create a dedicated text evidence analysis workspace.
+
+Inputs:
+
+- Paste text
+- Upload text file
+- Extracted OCR text
+- Video subtitles
+- Audio transcript
+- Investigation context
+
+Layout:
+
+Left panel:
+Original text or input.
+
+Center panel:
+Analysis workspace.
+
+Right panel:
+Observations and evidence context.
+
+Features:
+
+- Text input
+- Text comparison
+- Highlighting
+- Claim extraction UI
+- Timeline of statements
+- Contradiction review
+- Source references
+- Context notes
+- Transcript alignment
+
+Create an evidence comparison tool:
+
+Text A versus Text B.
+
+Highlight:
+
+- Added text
+- Removed text
+- Changed wording
+- Differences in dates
+- Differences in locations
+- Differences in names
+- Differences in claims
+
+Do not assume text differences imply misinformation.
+
+Create a context analysis area that separates:
+
+- Observed facts
+- Claims
+- Context provided by the user
+- Possible inconsistencies
+- Unverified statements
+
+Do not fabricate fact-checking or web verification.
+
+If external verification is not implemented, clearly label the feature as contextual comparison only.
+
+---
+
+# 13. PAGE 8 — CROSS-MODAL ANALYSIS
+
+Create a visual evidence correlation workspace.
+
+This should look sophisticated and analytical.
+
+Design a central evidence relationship graph connecting:
+
+- Image
+- Video
+- Audio
+- Text
+- Metadata
+- Timeline
+- Sources
+- Findings
+
+Create nodes and relationships.
+
+Allow selecting a node to inspect its information.
+
+Use relationship labels such as:
+
+- Same timestamp
+- Related source
+- Shared claim
+- Supporting observation
+- Contradictory context
+- Associated evidence
+- Requires review
+
+Create a correlation summary.
+
+Display:
+
+- Evidence items examined
+- Observations from each source
+- Relationships
+- Contradictions
+- Missing evidence
+- Limitations
+
+Use meaningful graph interactions.
+
+Do not fabricate actual correlation results.
+
+If no evidence is present, show a sample investigation explicitly marked DEMO or an empty-state explanation.
+
+Cross-modal analysis must not treat multiple correlated indicators from the same underlying signal as independent confirmation.
+
+---
+
+# 14. PAGE 9 — EVIDENCE COMPARISON LAB
+
+Create a dedicated evidence comparison tool.
+
+Allow selecting two or more evidence items.
+
+Comparison modes:
+
+### Image comparison
+
+- Side-by-side images
+- Synchronized zoom
+- Difference view
+- Opacity overlay
+- Metadata comparison
+- Dimensions comparison
+- Hash comparison
+
+### Text comparison
+
+- Diff view
+- Added text
+- Removed text
+- Changed text
+- Context comparison
+
+### Video comparison
+
+- Two synchronized video panels
+- Timestamp alignment
+- Frame comparison
+- Timeline comparison
+
+### Audio comparison
+
+- Waveform comparison
+- Segment alignment
+- Duration comparison
+- Spectrogram comparison
+
+Unavailable comparison modes must remain clearly marked as not implemented.
+
+---
+
+# 15. PAGE 10 — INVESTIGATION HISTORY
+
+Create a historical investigation archive.
+
+Display:
+
+- Investigation ID
+- Title
+- Date created
+- Last modified
+- Evidence count
+- Analysis status
+- Report status
+
+Features:
+
+- Search
+- Filtering
+- Sorting
+- Open investigation
+- Archive investigation
+- Delete with confirmation
+- Duplicate investigation
+
+Provide a detailed investigation view.
+
+Use localStorage or IndexedDB for frontend-only development persistence.
+
+Do not claim cloud storage.
+
+Do not claim multi-user persistence.
+
+---
+
+# 16. PAGE 11 — EVIDENCE VAULT
+
+Create an evidence library.
+
+Display uploaded evidence in:
+
+- Grid view
+- List view
+
+Each evidence item should show:
+
+- Preview or thumbnail
+- Evidence ID
+- File name
+- File type
+- Upload date
+- File size
+- Hash status
+- Analysis status
+- Associated investigation
+
+Features:
+
+- Search
+- Filter by type
+- Sort
+- Select multiple items
+- Add to investigation
+- Open analysis
+- View evidence details
+
+Support file integrity information.
+
+If hashes are generated locally, indicate that they were calculated locally.
+
+Use safe file handling.
+
+Never silently alter uploaded evidence.
+
+---
+
+# 17. PAGE 12 — FORENSIC REPORTS
+
+Create a premium report generation and report viewing module.
+
+## Report design
+
+The report should look like a professional forensic document.
+
+Report sections:
+
+1. Cover
+2. Investigation details
+3. Executive summary
+4. Evidence inventory
+5. File integrity information
+6. Analysis methods
+7. Observed indicators
+8. Region-level observations
+9. Supporting evidence
+10. Cross-modal observations
+11. Limitations
+12. Alternative explanations
+13. Recommended manual verification
+14. Investigator notes
+15. Conclusion
+
+## Report generation interface
+
+Include:
+
+- Report title
+- Investigation ID
+- Report date
+- Evidence selection
+- Section configuration
+- Preview
+- Export
+
+Implement PDF export where feasible using an appropriate frontend library.
+
+Reports must:
+
+- Use real analysis data when available
+- Distinguish observations from interpretations
+- Include method limitations
+- Avoid unsupported conclusions
+- Include file hash information where available
+- Display a clear disclaimer
+
+Required disclaimer:
+
+"TruthLens provides forensic indicators and analytical observations, not definitive proof of authenticity or manipulation. Results must be interpreted alongside contextual evidence and reviewed by a qualified human investigator."
+
+Never generate fabricated forensic findings.
+
+---
+
+# 18. PAGE 13 — METHODOLOGY & LIMITATIONS
+
+Create an educational methodology section.
+
+Explain each forensic module:
+
+## Metadata Analysis
+
+What it examines:
+
+- EXIF information
+- Software tags
+- Image dimensions
+- Available provenance information
+
+Limitations:
+
+- Metadata can be removed
+- Metadata can be modified
+- Missing metadata does not prove manipulation
+
+## Error Level Analysis
+
+Explain:
+
+- JPEG recompression
+- Error patterns
+- Regional variation
+
+Limitations:
+
+- ELA is not a definitive manipulation detector
+- Compression history affects output
+- Results require careful interpretation
+
+## Noise Analysis
+
+Explain:
+
+- Image noise
+- Texture
+- Noise residuals
+- Regional variation
+
+Limitations:
+
+- Cameras differ
+- Editing and compression affect noise
+- Noise variation can be natural
+
+## Frequency Analysis
+
+Explain:
+
+- Frequency domain
+- FFT
+- Periodic artifacts
+- High-frequency patterns
+
+Limitations:
+
+- Resize
+- Sharpening
+- Compression
+- Camera processing
+
+## Regional Analysis
+
+Explain:
+
+- Regional feature comparison
+- Statistical deviation
+- Neighbor contrast
+- Region localization
+
+Limitations:
+
+- Regions are statistical comparisons
+- A deviation is not necessarily manipulation
+
+## Video Analysis
+
+Explain the planned analysis:
+
+- Frame extraction
+- Scene changes
+- Temporal consistency
+- OCR
+- Frame comparison
+
+## Audio Analysis
+
+Explain planned analysis:
+
+- Waveforms
+- Spectrograms
+- Signal characteristics
+- Speech analysis
+- Audio/text alignment
+
+## Cross-modal analysis
+
+Explain:
+
+- Evidence relationships
+- Shared context
+- Contradictions
+- Independent signals
+- Correlation limitations
+
+Make the page interactive using collapsible sections, diagrams, and visual explanations.
+
+---
+
+# 19. PAGE 14 — SYSTEM STATUS
+
+Create a system monitoring page.
+
+Display:
+
+- Frontend status
+- Backend connection status
+- API health
+- Current API base URL
+- Analysis engine availability
+- Supported image formats
+- File limits
+- Version information
+- Last successful health check
+
+Use actual API status whenever possible.
+
+If backend connection fails:
+
+- Display disconnected
+- Show error details
+- Provide retry
+- Do not fake operational status
+
+Engine availability:
+
+- Image Forensics — Available only when backend connection and actual endpoint are confirmed
+- Video Forensics — Planned / Not implemented
+- Audio Forensics — Planned / Not implemented
+- Text & Context — UI available, analysis engine status clearly indicated
+- Cross-Modal — Planned / Not implemented
+
+Create an animated health status interface without fake telemetry.
+
+---
+
+# 20. PAGE 15 — SETTINGS
+
+Create a settings interface.
+
+Sections:
+
+## General
+
+- Application preferences
+- Theme
+- Animations
+- Compact mode
+
+## Analysis
+
+- Default analysis settings
+- Evidence display preferences
+- Region visualization preferences
+
+Do not expose controls that alter backend behavior unless the backend supports them.
+
+## API
+
+- Backend URL
+- Connection status
+- Test connection button
+
+## Storage
+
+- Local evidence information
+- Local investigation data
+- Clear local data with confirmation
+
+## Accessibility
+
+- Reduced motion
+- Contrast preferences
+- Text scaling support
+
+---
+
+# 21. CHAIN OF CUSTODY & EVIDENCE INTEGRITY
+
+Integrate evidence integrity into the Evidence Workspace and Evidence Vault.
+
+Include:
+
+- Evidence identifier
+- Original filename
+- File size
+- File type
+- SHA-256
+- Upload timestamp
+- Analysis timestamp
+- Analysis version if available
+- Evidence association
+- Activity log
+
+Create a visually clear chain-of-custody timeline.
+
+Clearly distinguish:
+
+- Locally calculated hash
+- Server-generated values
+- User-entered values
+- Unknown or unavailable values
+
+Never fabricate timestamps or integrity validation.
+
+Do not claim a complete legal chain of custody unless the system actually implements the required controls.
+
+---
+
+# 22. ANIMATION AND MOTION DESIGN
+
+Use Framer Motion if compatible with the project.
+
+Animations must be polished, restrained, purposeful, and consistent.
+
+## Page transitions
+
+- Fade
+- Slight slide
+- Smooth content transition
+
+## Card entrance
+
+- Staggered reveal
+- Slight vertical motion
+- Low-duration animation
+
+## Dashboard
+
+- Animated chart entry
+- Subtle background atmosphere
+- Smooth metric appearance
+
+## Forensic scanning
+
+Create a scanning line that moves across an image preview during actual processing or a clearly identified demonstration animation.
+
+## Analysis processing
+
+Create a progress sequence:
+
+1. Evidence validation
+2. File integrity calculation
+3. Metadata examination
+4. Forensic analysis
+5. Evidence synthesis
+6. Report preparation
+
+Only show steps that correspond to actual backend work.
+
+If the backend does not expose individual stages, display a generic processing indicator rather than pretending each stage is actually running.
+
+## Upload
+
+- Animated drop-zone border
+- Hover state
+- Drag-over state
+- File preview transition
+
+## Evidence indicators
+
+- Subtle pulse
+- Hover highlight
+- Region highlight animation
+
+## Modal
+
+- Smooth open
+- Smooth close
+- Backdrop transition
+
+## Loading
+
+- Skeletons
+- Shimmer
+- Progress indicators
+
+Respect the user's reduced-motion preference.
+
+Do not create animations that delay actual interaction.
+
+---
+
+# 23. VISUAL ASSETS — IMPORTANT
+
+Use multiple relevant images and visuals throughout the application.
+
+The application must not feel like a text-only dashboard.
+
+Use a coherent visual asset strategy.
+
+## Dashboard visual
+
+Create or use a cinematic digital forensic investigation laboratory visual.
+
+Visual characteristics:
+
+- Dark laboratory
+- Digital evidence screens
+- Abstract forensic analysis
+- Blue/cyan lighting
+- Professional atmosphere
+- No random hacker imagery
+
+## Image Forensics visual
+
+Use image-related visuals:
+
+- Magnified image details
+- Digital pixels
+- Forensic heatmap imagery
+- Image inspection concepts
+
+## Video Forensics visual
+
+Use video and frame-analysis visuals:
+
+- Film frames
+- Timeline
+- Video evidence
+- Scene analysis
+
+## Audio Forensics visual
+
+Use audio-specific visuals:
+
+- Sound waveform
+- Spectrogram
+- Signal analysis
+
+## Cross-Modal visual
+
+Use:
+
+- Evidence relationship graphs
+- Connected media nodes
+- Data relationships
+
+## Reports visual
+
+Use:
+
+- Professional report previews
+- Document layouts
+- Evidence summaries
+
+## Asset rules
+
+- Use several unique assets
+- Do not reuse the same hero image across all pages
+- Do not use irrelevant stock photos
+- Avoid excessive decoration
+- Ensure text remains readable over images
+- Apply dark overlays and gradients where appropriate
+- Use appropriate image crops
+- Optimize assets for loading speed
+- Use icons for technical information, images for visual storytelling, and charts for data
+
+If image generation or remote image retrieval is unavailable, create elegant CSS-based visuals and SVG graphics as fallbacks.
+
+Do not use broken image URLs.
+
+Do not create a dependency on unreliable external image URLs.
+
+Where feasible, use generated or locally stored assets.
+
+---
+
+# 24. FUNCTIONALITY REQUIREMENTS
+
+Every important visible control must work.
+
+Implement:
+
+- Navigation
+- Sidebar collapse/expand
+- Page routing
+- File upload
+- Drag-and-drop
+- File validation
+- Image previews
+- Search
+- Filters
+- Sorting
+- Tabs
+- Modal dialogs
+- Dropdowns
+- Tooltips
+- Notifications
+- Analysis submission
+- Backend health check
+- Result rendering
+- Region selection
+- Zoom controls
+- Timeline interaction
+- Report preview
+- PDF export where feasible
+- Investigation creation
+- Evidence management
+- Notes
+- Local persistence
+- Settings
+- Empty states
+- Error states
+- Loading states
+- Confirmation dialogs
+
+Do not leave buttons that do nothing.
+
+If a feature is not implemented, provide a clearly labeled disabled state or a useful explanatory interaction.
+
+Do not create misleading controls that appear operational but are fake.
+
+---
+
+# 25. BACKEND INTEGRATION ARCHITECTURE
+
+The frontend must be ready to integrate with an existing FastAPI backend.
+
+Backend base URL must be configurable through environment variables.
+
+Use:
+
+VITE_API_BASE_URL
+
+Development default:
+
+http://localhost:8000
+
+Create a centralized API service layer.
+
+Suggested structure:
+
+src/
+  services/
+    api.ts
+    imageAnalysisService.ts
+    healthService.ts
+
+  types/
+    api.ts
+    analysis.ts
+    evidence.ts
+    investigation.ts
+
+  hooks/
+    useBackendHealth.ts
+    useImageAnalysis.ts
+
+  components/
+    ui/
+    layout/
+    evidence/
+    analysis/
+    charts/
+
+  pages/
+    Dashboard.tsx
+    InvestigationWorkspace.tsx
+    ImageForensics.tsx
+    VideoForensics.tsx
+    AudioForensics.tsx
+    TextAnalysis.tsx
+    CrossModalAnalysis.tsx
+    EvidenceComparison.tsx
+    EvidenceVault.tsx
+    Reports.tsx
+    History.tsx
+    Methodology.tsx
+    SystemStatus.tsx
+    Settings.tsx
+
+  layouts/
+    AppLayout.tsx
+
+  routes/
+    AppRouter.tsx
+
+Use clean, maintainable, typed code.
+
+Do not scatter API calls throughout UI components.
+
+Use environment variables.
+
+Handle:
+
+- Network errors
+- Backend unavailable
+- Invalid input
+- Validation errors
+- Server errors
+- Loading states
+- Unexpected response structures
+
+Do not hardcode backend response data.
+
+Inspect and match the actual API contract when the backend source is available.
+
+---
+
+# 26. EXISTING BACKEND CONTRACT
+
+The currently available backend is FastAPI.
+
+Known endpoints:
+
+GET /health
+
+POST /api/v1/analyze
+
+Swagger:
+
+/docs
+
+OpenAPI:
+
+/openapi.json
+
+Current supported image formats:
+
+- JPEG
+- PNG
+- WEBP
+
+Current reported upload limits:
+
+- 15 MB
+- 12,000 px dimension
+- 40 megapixels
+
+Current image forensic modules:
+
+- Metadata / EXIF
+- Error Level Analysis
+- Noise Residual
+- Frequency Domain / FFT
+- Regional Anomaly Analysis
+
+Current evidence synthesis domains:
+
+- Metadata & Provenance
+- Compression & Recompression
+- Noise & Texture
+- Frequency Spectrum
+- Spatial Consistency
+
+Important:
+
+Spatial Consistency is not an independent evidence domain.
+
+The system should preserve the distinction between independent signals and supporting spatial observations.
+
+Backend assessment is heuristic and not calibrated to produce a probability of authenticity.
+
+Do not display "98% real," "99% fake," or similar unsupported probabilities.
+
+Do not invent backend response fields.
+
+Do not invent API endpoints.
+
+Do not assume multipart field names.
+
+If the actual backend code or OpenAPI specification is accessible, inspect it and implement integration according to the real contract.
+
+If the backend is not accessible during generation, create an adaptable API integration layer and mark integration as pending.
+
+Do not modify the backend unless explicitly instructed.
+
+---
+
+# 27. IMAGE ANALYSIS API WORKFLOW
+
+When the user uploads an image:
+
+1. Validate the file.
+2. Display preview.
+3. Calculate SHA-256 locally where feasible.
+4. Check file size.
+5. Check dimensions.
+6. Check format.
+7. Display upload/evidence details.
+8. Submit to the actual API.
+9. Handle backend response.
+10. Render the real results.
+11. Allow users to inspect findings.
+12. Allow report generation.
+
+Use multipart FormData for file upload where required.
+
+Do not manually set an incorrect multipart Content-Type header if the browser needs to provide its boundary.
+
+Ensure backend CORS configuration is respected.
+
+Do not create a fake result when an API call fails.
+
+If the backend is offline, clearly communicate that the forensic analysis was not performed.
+
+---
+
+# 28. EVIDENCE VISUALIZATION
+
+Create a comprehensive visualization system.
+
+Use Recharts where appropriate.
+
+Potential visualizations:
+
+- Evidence activity timeline
+- Regional analysis grid
+- Frequency charts
+- Domain observation charts
+- Evidence relationship graph
+- Image difference view
+- Audio waveform
+- Spectrogram
+- Video frame timeline
+- Text discrepancy view
+
+Use actual analysis data whenever available.
+
+Clearly label sample visualizations as demo data.
+
+Do not use charts merely to decorate the interface.
+
+Every chart should communicate a useful forensic concept.
+
+---
+
+# 29. DEMO MODE
+
+Implement an optional Demo Mode.
+
+Demo Mode should allow judges to explore the application's UI even if backend functionality is unavailable.
+
+Demo Mode rules:
+
+- Clearly label Demo Mode
+- Use separate sample data
+- Never mix demo data with actual analysis data
+- Show example investigations
+- Show example evidence
+- Show example reports
+- Show example visualizations
+- Demonstrate navigation and interactions
+- Clearly label sample results
+
+Create an easy Demo Mode toggle.
+
+When Demo Mode is enabled, display a visible badge:
+
+"DEMO DATA — NOT A REAL FORENSIC ANALYSIS"
+
+When Demo Mode is disabled, use actual backend data and show honest empty states.
+
+---
+
+# 30. RESPONSIVE DESIGN
+
+The application must work on:
+
+- Desktop
+- Laptop
+- Tablet
+- Mobile
+
+Desktop:
+
+- Persistent sidebar
+- Multi-column investigation layouts
+- Large image inspection canvas
+- Dense but readable data panels
+
+Tablet:
+
+- Collapsible sidebar
+- Reduced column count
+- Adaptable panels
+
+Mobile:
+
+- Drawer navigation
+- Single-column layouts
+- Touch-friendly controls
+- Stacked panels
+- Responsive image viewer
+- Mobile-friendly tables
+- Horizontal scrolling only when necessary
+
+Never let the interface overflow horizontally unintentionally.
+
+---
+
+# 31. ACCESSIBILITY
+
+Implement:
+
+- Keyboard navigation
+- Focus indicators
+- Semantic HTML
+- Accessible labels
+- Tooltips
+- Adequate contrast
+- Screen-reader-friendly descriptions
+- Reduced motion
+- Keyboard-accessible modals
+- Keyboard-operable controls
+
+---
+
+# 32. TECHNICAL STACK
+
+Preferred stack:
+
+- React
+- TypeScript
+- Vite
+- Tailwind CSS
+- React Router
+- Framer Motion
+- Lucide React
+- Recharts
+
+Optional, only when justified:
+
+- React Flow for evidence graphs
+- PDF generation library
+- Zustand or Context for state management
+- IndexedDB for local evidence metadata
+
+Do not add unnecessary dependencies.
+
+Use reusable components.
+
+Avoid giant components.
+
+Keep code clean and modular.
+
+Use TypeScript types.
+
+---
+
+# 33. PROJECT STRUCTURE
+
+Organize the application professionally.
+
+Suggested structure:
+
+src/
+  app/
+    App.tsx
+    router.tsx
+
+  components/
+    common/
+    layout/
+    navigation/
+    ui/
+    dashboard/
+    evidence/
+    forensic/
+    reports/
+    visualization/
+
+  pages/
+    DashboardPage.tsx
+    NewInvestigationPage.tsx
+    InvestigationWorkspacePage.tsx
+    ImageForensicsPage.tsx
+    VideoForensicsPage.tsx
+    AudioForensicsPage.tsx
+    TextAnalysisPage.tsx
+    CrossModalPage.tsx
+    ComparisonPage.tsx
+    HistoryPage.tsx
+    EvidenceVaultPage.tsx
+    ReportsPage.tsx
+    MethodologyPage.tsx
+    SystemStatusPage.tsx
+    SettingsPage.tsx
+
+  services/
+    api.ts
+    health.ts
+    imageAnalysis.ts
+    storage.ts
+    reports.ts
+
+  hooks/
+  types/
+  utils/
+  assets/
+  styles/
+
+public/
+  assets/
+
+Use the structure as guidance, not as a rigid requirement.
+
+---
+
+# 34. APPLICATION STATE
+
+Create a sensible state management approach.
+
+The application should support:
+
+- Current investigation
+- Evidence collection
+- Selected evidence
+- Analysis status
+- Analysis results
+- Findings
+- Notes
+- Report configuration
+- Demo mode
+- Backend health
+
+Use local persistence for the hackathon prototype where appropriate.
+
+Do not store large media files permanently in localStorage.
+
+Use IndexedDB if local file persistence is necessary.
+
+Ensure refresh does not unnecessarily destroy investigation metadata.
+
+---
+
+# 35. SECURITY AND RESPONSIBLE EVIDENCE HANDLING
+
+Implement appropriate frontend security practices.
+
+- Validate file types
+- Validate file size
+- Avoid unsafe HTML rendering
+- Avoid embedding uploaded files in unsafe contexts
+- Do not expose API secrets
+- Do not expose sensitive metadata unnecessarily
+- Do not expose GPS coordinates in the UI
+- Do not log sensitive evidence content
+- Use secure API configuration
+- Avoid unsafe file handling
+- Provide confirmation before destructive actions
+- Clearly distinguish original evidence from generated visualizations
+
+Never claim that the prototype provides legally certified evidence preservation.
+
+---
+
+# 36. EMPTY STATES
+
+Every page must have a polished empty state.
+
+Examples:
+
+No investigation:
+
+"Your investigation workspace is ready."
+
+No evidence:
+
+"Add digital evidence to begin forensic examination."
+
+Backend offline:
+
+"TruthLens cannot reach the forensic engine. Your evidence has not been analyzed."
+
+No report:
+
+"Generate an evidence-backed report after reviewing your analysis."
+
+No cross-modal evidence:
+
+"Add evidence from multiple sources to explore relationships."
+
+Empty states must include useful actions.
+
+---
+
+# 37. ERROR HANDLING
+
+Implement global error handling.
+
+Errors should be understandable.
+
+Examples:
+
+- Unable to connect to forensic engine
+- Unsupported image format
+- Image exceeds maximum file size
+- Invalid file
+- Analysis failed
+- Report generation failed
+- Local storage unavailable
+
+Do not expose stack traces to normal users.
+
+Provide retry where appropriate.
+
+Preserve uploaded evidence in the current session when a processing request fails, where safe.
+
+---
+
+# 38. DASHBOARD VISUAL QUALITY
+
+The dashboard must be exceptionally polished.
+
+Create:
+
+- Subtle animated background
+- Professional hero section
+- Forensic visual artwork
+- Compact KPI cards
+- Recent investigation list
+- Evidence activity timeline
+- Module status grid
+- Backend health indicator
+- Quick action buttons
+
+Use spacing consistently.
+
+Avoid overcrowding.
+
+Make the dashboard visually rich without compromising readability.
+
+---
+
+# 39. MICROINTERACTIONS
+
+Implement:
+
+- Hover states
+- Active navigation
+- Button press states
+- Card hover transitions
+- Loading skeletons
+- Tooltips
+- Modal transitions
+- Toast notifications
+- File upload feedback
+- Progress feedback
+- Tabs
+- Expandable sections
+- Search feedback
+- Copy-to-clipboard for hashes
+- Confirmation dialogs
+
+Every interaction should feel intentional.
+
+---
+
+# 40. PERFORMANCE
+
+The application should:
+
+- Load quickly
+- Avoid unnecessary rerenders
+- Lazy-load heavy modules where reasonable
+- Optimize image previews
+- Avoid excessive animation
+- Avoid loading all pages simultaneously
+- Handle large image previews responsibly
+- Keep charts responsive
+- Avoid unnecessary dependencies
+
+---
+
+# 41. FINAL IMPLEMENTATION REQUIREMENTS
+
+Generate the complete application.
+
+Do not stop after creating:
+
+- Dashboard
+- Landing page
+- Navigation
+
+All requested modules must have their own complete page structure.
+
+Build a functional frontend with real interactions and clean code.
+
+Implement:
+
+- Routing
+- Navigation
+- Design system
+- Components
+- Dashboard
+- Investigation workflows
+- Evidence workspace
+- Image analysis interface
+- Video interface
+- Audio interface
+- Text interface
+- Cross-modal interface
+- Comparison tools
+- Evidence vault
+- Investigation history
+- Reports
+- Methodology
+- System status
+- Settings
+- Demo mode
+- API service layer
+- Responsive design
+- Animations
+- Empty states
+- Error states
+
+Do not leave pages as unfinished placeholders.
+
+Unsupported forensic engines should be visually complete but honestly marked as planned or unavailable.
+
+The existing image analysis backend is the only currently implemented forensic engine. Prioritize its genuine integration and complete results experience.
+
+---
+
+# 42. FINAL QUALITY CHECK
+
+Before declaring the application complete, verify:
+
+- All routes work
+- No blank pages
+- No broken navigation
+- No dead buttons
+- No broken image assets
+- No TypeScript errors
+- No obvious console errors
+- No overflowing layouts
+- Responsive behavior works
+- Animations work
+- Reduced-motion support works
+- API configuration works
+- Backend connection status is honest
+- Image upload works
+- File validation works
+- Analysis response is rendered correctly
+- Errors are handled
+- Reports use real evidence when available
+- Demo data is clearly labeled
+- Unsupported features are not falsely represented as implemented
+
+Run the available build and lint commands if the environment permits.
+
+Fix all errors discovered.
+
+---
+
+# 43. EXECUTION INSTRUCTION
+
+Do not merely provide a plan, explanation, design description, pseudocode, or wireframe.
+
+Actually generate the complete application and its source files in the available environment.
+
+If working in Claude Code or another coding agent connected to a repository:
+
+- Inspect the repository before making changes.
+- Identify the existing backend.
+- Preserve all backend files.
+- Do not overwrite backend functionality.
+- Do not delete existing code without a backup.
+- Build the frontend in its designated directory.
+- Use the existing API contract where possible.
+- Run the project and tests.
+- Fix errors.
+- Summarize the completed work.
+
+If working in Google AI Studio:
+
+- Generate the full React application.
+- Ensure all components and pages are included.
+- Make navigation functional.
+- Provide working interactions.
+- Make the application exportable as a complete project.
+- Avoid delivering only a visual preview.
+
+If output or context limits prevent completion in one generation, continue implementing the remaining files in the same project without redesigning, deleting, or replacing already completed modules.
+
+Do not ask me to choose a design direction.
+
+Do not simplify the scope into a basic dashboard.
+
+Use your professional judgment to make implementation decisions while following this specification.
+
+The final result should be a complete, polished, interactive, responsive, premium digital forensic investigation application.
+
+PRODUCT NAME: TruthLens
+
+TAGLINE: See beyond the image. Verify what is real.
+
+BUILD THE APPLICATION NOW.

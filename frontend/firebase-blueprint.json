@@ -1,0 +1,153 @@
+{
+  "entities": {
+    "InvestigatorProfile": {
+      "title": "InvestigatorProfile",
+      "description": "Private investigator account profile storing verified identity metadata and workspace attribution.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Authentication UID matching the document ID."
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "description": "Investigator full name or handle displayed on reports and notes."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "minLength": 3,
+          "maxLength": 254,
+          "description": "Verified investigator email address (PII, owner-read only)."
+        },
+        "organization": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 120,
+          "description": "Newsroom, forensic lab, or academic institution."
+        },
+        "roleTitle": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 100,
+          "description": "Descriptive job title such as Digital Forensics Analyst."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when profile was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when profile was last updated."
+        }
+      },
+      "required": ["uid", "displayName", "email", "organization", "roleTitle", "createdAt", "updatedAt"]
+    },
+    "ForensicCaseRecord": {
+      "title": "ForensicCaseRecord",
+      "description": "Cloud-persisted digital forensic investigation record scoped strictly to its owning investigator.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Investigation identifier matching the document ID."
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Owning investigator Firebase Auth UID."
+        },
+        "caseReference": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "description": "Human-readable case docket reference code."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 180,
+          "description": "Concise title of the forensic investigation."
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Media Verification",
+            "Disinformation Review",
+            "Deepfake Investigation",
+            "Document & Provenance",
+            "Incident Response",
+            "Academic Research"
+          ],
+          "description": "Investigation classification category."
+        },
+        "investigator": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "description": "Lead investigator name attributed to the case."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Active", "In Review", "Completed", "Archived"],
+          "description": "Lifecycle status of the case. Archived is terminal."
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 1500,
+          "description": "Contextual summary and scope notes for the investigation."
+        },
+        "evidenceCount": {
+          "type": "number",
+          "description": "Number of evidence items linked to this investigation."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when case was opened."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when case was last modified."
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "caseReference",
+        "title",
+        "category",
+        "investigator",
+        "status",
+        "summary",
+        "evidenceCount",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/InvestigatorProfile" },
+      "description": "Private investigator profile document strictly isolated to ownerId == request.auth.uid."
+    },
+    "/users/{userId}/cases/{caseId}": {
+      "schema": { "$ref": "#/entities/ForensicCaseRecord" },
+      "description": "Private cloud-synced forensic case records owned by the authenticated investigator."
+    }
+  }
+}
