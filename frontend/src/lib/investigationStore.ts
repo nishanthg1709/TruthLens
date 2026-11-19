@@ -46,21 +46,61 @@ export function readInvestigations(): StoredInvestigation[] {
   return readInvestigationHistory().records;
 }
 
+function sanitizeResultForStorage(result?: InvestigationResult): InvestigationResult | undefined {
+  if (!result) return undefined;
+  try {
+    const clone = JSON.parse(JSON.stringify(result)) as InvestigationResult;
+    if (clone.imageEvidence) {
+      if (clone.imageEvidence.ela) delete clone.imageEvidence.ela.visualizationUrl;
+      if (clone.imageEvidence.noise) delete clone.imageEvidence.noise.visualizationUrl;
+      if (clone.imageEvidence.frequency) delete clone.imageEvidence.frequency.visualizationUrl;
+      if (clone.imageEvidence.regionalAnomaly) delete clone.imageEvidence.regionalAnomaly.visualizationUrl;
+      if (clone.imageEvidence.originalImageUrl?.startsWith('blob:')) delete clone.imageEvidence.originalImageUrl;
+    }
+    delete clone.rawResponse;
+    return clone;
+  } catch {
+    return undefined;
+  }
+}
+
 export function saveInvestigation(record: StoredInvestigation): void {
   const { records } = readInvestigationHistory();
-  const next = [record, ...records.filter((item) => item.id !== record.id)].slice(0, 100);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  const safeRecord: StoredInvestigation = {
+    ...record,
+    result: sanitizeResultForStorage(record.result),
+  };
+  const next = [safeRecord, ...records.filter((item) => item.id !== record.id)].slice(0, 50);
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    try {
+      const minimal = next.map(r => ({ ...r, result: undefined }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(minimal));
+    } catch {
+      // Ignored if local storage disabled
+    }
+  }
 }
 
 export function updateInvestigationStatus(id: string, status: InvestigationStatus): void {
   const { records } = readInvestigationHistory();
   const next = records.map((record) => record.id === id ? { ...record, status } : record);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    // Ignore
+  }
 }
 
 export function deleteInvestigation(id: string): void {
   const { records } = readInvestigationHistory();
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(records.filter((record) => record.id !== id)));
+  const next = records.filter((record) => record.id !== id);
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    // Ignore
+  }
 }
 
 export function clearInvestigationHistory(): void {

@@ -1,51 +1,33 @@
-# TruthLens Backend Integration Checklist
+# TruthLens Backend Integration Contract & Status
 
-The frontend does not assume a backend contract. Confirm the following before enabling live submissions.
+The TruthLens frontend is integrated with the TruthLens Phase 3.1 FastAPI backend.
 
-## Required from the backend developer
+## Confirmed Backend Contract
 
-1. Public API base URL and CORS origin.
-2. Submission endpoint for synchronous analysis.
-3. Optional separate image, video, audio, and text submission endpoints.
-4. HTTP method and accepted `FormData` field names.
-5. Confirm media field name: the frontend currently sends `media` and `mediaType`.
-6. Confirm text field name: the frontend currently sends `text`.
-7. Synchronous response schema for `InvestigationResult`, or the exact JSON field names.
-8. Whether analysis is asynchronous.
-9. Asynchronous job ID field names and status field names.
-10. Status endpoint URL format; for example, `/api/jobs/{jobId}` or a response-provided URL.
-11. Status values and terminal states.
-12. Status response result location and schema.
-13. Health endpoint for accurate connection status.
-14. Authentication or API-key requirements.
-15. Maximum upload size and supported file limits.
-16. Timeout and recommended polling interval.
-17. Report download endpoint and report response schema.
-18. History/list/delete endpoint contracts, if locally persisted history is not the only source.
-19. Expected assessment values if returned by the backend.
-20. Module status values and unavailable-module behavior.
+1. **Base URL:** `http://127.0.0.1:8000` (configurable via `VITE_TRUTHLENS_API_URL`).
+2. **Analysis Endpoint:** `POST /api/v1/analyze` (synchronous in-memory forensic analysis).
+3. **Form Field:** `file` (multipart/form-data `UploadFile`).
+4. **Health Endpoint:** `GET /health` returning `{ "application": "TruthLens", "status": "healthy", "version": "..." }`.
+5. **Supported Formats:** JPEG, PNG, WebP.
+6. **Maximum File Size:** 15 MB (`15 * 1024 * 1024` bytes).
+7. **Response Schema:** `AnalyzeResponse` containing:
+   - `success`: `boolean`
+   - `application`: `"TruthLens"`
+   - `phase`: `"phase_3"`
+   - `image_properties`: `ImageProperties`
+   - `sha256`: `string` (64-character hexadecimal digest)
+   - `analyses`: array of `AnalysisItem` containing:
+     - `metadata`: EXIF details, camera make/model, timestamps, software, GPS presence, fields found/missing.
+     - `ela`: Error Level Analysis scale factor, differences, channel stats, 4×4 regional grid, and difference image data URL.
+     - `noise`: Gaussian smoothing sigma, residual std, statistics, channel stds, 4×4 regional grid, and visualization data URL.
+     - `frequency`: 2D FFT Hann-windowed spectrum, low/mid/high energy percentages, spectral centroid, spectral entropy, and visualization data URL.
+     - `regional_anomaly`: 4×4 spatial anomaly tiles with deviation scores, neighbor contrast, feature z-scores, and visualization data URL.
+     - `synthesis`: Evidence summary relationship category, primary contributing domains, cross-domain relationships, key observations, and regional spatial synthesis.
+   - `assessment`: `{ "status": "COMPLETE", "summary": string, "limitations": string[] }`.
 
-## Frontend environment variables
+## Active Environment Variables
 
-- `VITE_TRUTHLENS_API_URL`
-- `VITE_TRUTHLENS_ANALYSIS_PATH`
-- `VITE_TRUTHLENS_IMAGE_ANALYSIS_PATH`
-- `VITE_TRUTHLENS_VIDEO_ANALYSIS_PATH`
-- `VITE_TRUTHLENS_AUDIO_ANALYSIS_PATH`
-- `VITE_TRUTHLENS_TEXT_ANALYSIS_PATH`
-- `VITE_TRUTHLENS_STATUS_PATH`
-- `VITE_TRUTHLENS_HEALTH_PATH`
-- `VITE_TRUTHLENS_REQUEST_TIMEOUT_MS`
-- `VITE_TRUTHLENS_STATUS_TIMEOUT_MS`
-- `VITE_TRUTHLENS_POLL_INTERVAL_MS`
-
-## Frontend behavior already prepared
-
-- Direct synchronous result handling
-- FormData media/text submission
-- Typed image, video, audio, and text functions
-- Job ID/status polling support
-- Loading and cancellation controls
-- Timeout and AbortError handling
-- Configurable health and status endpoints
-- Actual-backend-only response normalization
+- `VITE_TRUTHLENS_API_URL`: Backend URL (defaults to `http://127.0.0.1:8000`).
+- `VITE_TRUTHLENS_ANALYSIS_PATH`: Path to image analysis route (defaults to `/api/v1/analyze`).
+- `VITE_TRUTHLENS_HEALTH_PATH`: Path to health check (defaults to `/health`).
+- `VITE_TRUTHLENS_REQUEST_TIMEOUT_MS`: Request timeout in ms (defaults to `60000`).

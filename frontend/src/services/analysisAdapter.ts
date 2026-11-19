@@ -1,4 +1,28 @@
-import type { AnalysisStatus, InvestigationResult, MediaType, RegionalMeasurement, Finding } from '../types';
+import type {
+  AnalysisStatus,
+  InvestigationResult,
+  MediaType,
+  RegionalMeasurement,
+  Finding,
+  AssessmentInfo,
+  EvidenceRelationship,
+  EXIFMetadata,
+  ELAProvisionalResult,
+  NoiseResidualProvisionalResult,
+  FrequencyDomainResult,
+  RegionalAnomalyResult,
+  RegionalAnomalyTile,
+  SynthesisResult,
+  ImageForensicEvidence,
+  ImageProperties,
+  ModuleStatus,
+  KeyObservation,
+  CrossDomainRelationship,
+  RegionalSynthesis,
+  RegionalSynthesisTile,
+  EvidenceDomainItem,
+  EvidenceSummary,
+} from '../types';
 
 export class AnalysisConnectionError extends Error {
   constructor(message = 'Forensic engine not connected') {
@@ -52,14 +76,15 @@ export interface PollOptions extends SubmissionOptions {
   onStatus?: (job: AnalysisJob) => void;
 }
 
-const backendUrl = (import.meta.env.VITE_TRUTHLENS_API_URL as string | undefined)?.trim().replace(/\/$/, '');
-const submissionPath = (import.meta.env.VITE_TRUTHLENS_ANALYSIS_PATH as string | undefined)?.trim();
+const envApiUrl = (import.meta.env.VITE_TRUTHLENS_API_URL as string | undefined)?.trim().replace(/\/$/, '');
+const backendUrl = envApiUrl !== undefined && envApiUrl !== '' ? envApiUrl : 'http://127.0.0.1:8000';
+const submissionPath = (import.meta.env.VITE_TRUTHLENS_ANALYSIS_PATH as string | undefined)?.trim() || '/api/v1/analyze';
 const imagePath = (import.meta.env.VITE_TRUTHLENS_IMAGE_ANALYSIS_PATH as string | undefined)?.trim();
 const videoPath = (import.meta.env.VITE_TRUTHLENS_VIDEO_ANALYSIS_PATH as string | undefined)?.trim();
 const audioPath = (import.meta.env.VITE_TRUTHLENS_AUDIO_ANALYSIS_PATH as string | undefined)?.trim();
 const textPath = (import.meta.env.VITE_TRUTHLENS_TEXT_ANALYSIS_PATH as string | undefined)?.trim();
 const statusPath = (import.meta.env.VITE_TRUTHLENS_STATUS_PATH as string | undefined)?.trim();
-const healthPath = (import.meta.env.VITE_TRUTHLENS_HEALTH_PATH as string | undefined)?.trim();
+const healthPath = (import.meta.env.VITE_TRUTHLENS_HEALTH_PATH as string | undefined)?.trim() || '/health';
 const configuredRequestTimeout = Number(import.meta.env.VITE_TRUTHLENS_REQUEST_TIMEOUT_MS);
 const configuredStatusTimeout = Number(import.meta.env.VITE_TRUTHLENS_STATUS_TIMEOUT_MS);
 const configuredPollInterval = Number(import.meta.env.VITE_TRUTHLENS_POLL_INTERVAL_MS);
@@ -122,110 +147,405 @@ export function normalizeInvestigation(raw: Record<string, unknown>): Investigat
   const stringValue = (...values: unknown[]) => values.find(value => typeof value === 'string') as string | undefined;
   const numberValue = (...values: unknown[]) => values.find(value => typeof value === 'number') as number | undefined;
   const arrayValue = (...values: unknown[]) => values.find(value => Array.isArray(value)) as unknown[] | undefined;
+
   const normalizeStatusValue = (value: unknown): AnalysisStatus => {
     if (value === 'queued' || value === 'pending') return 'pending';
     if (value === 'processing' || value === 'running') return 'running';
-    if (value === 'completed') return 'completed';
+    if (value === 'completed' || value === 'ok') return 'completed';
     if (value === 'failed') return 'failed';
+    if (value === 'skipped' || value === 'not_implemented') return 'unavailable';
     return 'unavailable';
   };
 
-  const imageRaw = firstObject(raw.image, raw.imageEvidence, raw.image_evidence, raw.image_analysis);
-  const metadataRaw = firstObject(raw.metadata, raw.exif, raw.exif_metadata, raw.exifMetadata, imageRaw?.metadata, imageRaw?.exif);
-  const elaRaw = firstObject(raw.ela, raw.elaAnalysis, raw.ela_analysis, imageRaw?.ela);
-  const noiseRaw = firstObject(raw.noise, raw.noiseResidual, raw.noise_residual, raw.noiseResidualAnalysis, imageRaw?.noise, imageRaw?.noiseResidual);
-  const evidenceRaw = firstObject(raw.evidence, raw.evidenceInterpretation, raw.evidence_interpretation, imageRaw?.evidence);
+  // Inspect analyses array from TruthLens AnalyzeResponse (Phase 2 & 3 schema)
+  const rawAnalysesList = arrayValue(raw.analyses) as Record<string, unknown>[] | undefined;
+  const findAnalysis = (...names: string[]) => rawAnalysesList?.find(item => names.includes(item?.name as string));
 
-  const exif = metadataRaw ? {
-    cameraManufacturer: stringValue(metadataRaw.cameraManufacturer, metadataRaw.camera_manufacturer, metadataRaw.make),
-    cameraModel: stringValue(metadataRaw.cameraModel, metadataRaw.camera_model, metadataRaw.model),
-    originalTimestamp: stringValue(metadataRaw.originalTimestamp, metadataRaw.original_timestamp, metadataRaw.dateTimeOriginal, metadataRaw.DateTimeOriginal),
-    modificationTimestamp: stringValue(metadataRaw.modificationTimestamp, metadataRaw.modification_timestamp, metadataRaw.dateTimeModified, metadataRaw.DateTimeModified),
-    editingSoftware: stringValue(metadataRaw.editingSoftware, metadataRaw.editing_software, metadataRaw.software),
-    gpsPresent: typeof metadataRaw.gpsPresent === 'boolean' ? metadataRaw.gpsPresent : typeof metadataRaw.gps_present === 'boolean' ? metadataRaw.gps_present : typeof metadataRaw.gps !== 'undefined' ? metadataRaw.gps !== null : undefined,
+  const metaAnalysis = findAnalysis('metadata', 'exif');
+  const elaAnalysis = findAnalysis('ela');
+  const noiseAnalysis = findAnalysis('noise', 'noise_residual');
+  const freqAnalysis = findAnalysis('frequency', 'frequency_domain', 'fft');
+  const regAnalysis = findAnalysis('regional', 'regional_anomaly');
+  const synthAnalysis = findAnalysis('synthesis', 'evidence_synthesis');
+
+  const rawImageProperties = firstObject(raw.image_properties, raw.imageProperties);
+
+  // Metadata / EXIF normalization
+  const metadataRaw = firstObject(metaAnalysis?.details, raw.metadata, raw.exif, raw.exif_metadata, raw.exifMetadata);
+  const exif: EXIFMetadata | undefined = metadataRaw ? {
+    cameraManufacturer: stringValue(metadataRaw.camera_make, metadataRaw.cameraManufacturer, metadataRaw.camera_model, metadataRaw.make),
+    cameraModel: stringValue(metadataRaw.camera_model, metadataRaw.cameraModel, metadataRaw.model),
+    originalTimestamp: stringValue(metadataRaw.capture_datetime, metadataRaw.originalTimestamp, metadataRaw.original_timestamp, metadataRaw.dateTimeOriginal),
+    modificationTimestamp: stringValue(metadataRaw.digitized_datetime, metadataRaw.modificationTimestamp, metadataRaw.modification_timestamp, metadataRaw.dateTimeModified),
+    editingSoftware: stringValue(metadataRaw.software, metadataRaw.editingSoftware, metadataRaw.editing_software),
+    gpsPresent: typeof metadataRaw.gps_present === 'boolean' ? metadataRaw.gps_present : typeof metadataRaw.gpsPresent === 'boolean' ? metadataRaw.gpsPresent : false,
+    gpsFields: arrayValue(metadataRaw.gps_fields_present)?.map(String),
+    lens: stringValue(metadataRaw.lens),
+    colorSpace: stringValue(metadataRaw.color_space, metadataRaw.colorSpace),
+    exifVersion: stringValue(metadataRaw.exif_version, metadataRaw.exifVersion),
+    fieldsFound: arrayValue(metadataRaw.fields_found)?.map(String),
+    fieldsMissing: arrayValue(metadataRaw.fields_missing)?.map(String),
+    parseErrors: arrayValue(metadataRaw.parse_errors)?.map(String),
+    formatNotes: stringValue(metadataRaw.format_notes, metadataRaw.formatNotes),
+    observations: arrayValue(metaAnalysis?.observations)?.map(String),
+    limitations: arrayValue(metaAnalysis?.limitations)?.map(String),
   } : undefined;
 
-  const normalizeRgb = (value: unknown) => {
-    if (!value || typeof value !== 'object') return undefined;
-    const rgb = value as Record<string, unknown>;
-    const numeric = (key: string) => typeof rgb[key] === 'number' ? rgb[key] as number : undefined;
-    return { red:numeric('red') ?? numeric('r'), green:numeric('green') ?? numeric('g'), blue:numeric('blue') ?? numeric('b'), mean:numeric('mean'), r:numeric('r'), g:numeric('g'), b:numeric('b') };
-  };
-
-  const normalizeRegions = (value: unknown) => {
+  // Regional metrics helper
+  const normalizeRegions = (value: unknown): RegionalMeasurement[] | undefined => {
     if (!Array.isArray(value)) return undefined;
-    return value.filter(item => item && typeof item === 'object').map(item => item as Record<string, unknown>) as RegionalMeasurement[];
+    return value.filter(item => item && typeof item === 'object').map(item => {
+      const region = item as Record<string, unknown>;
+      return {
+        region: stringValue(region.region_id, region.region),
+        row: numberValue(region.row),
+        column: numberValue(region.col, region.column),
+        value: numberValue(region.mean_difference, region.value),
+        variance: numberValue(region.variance),
+        std: numberValue(region.std),
+        maxDifference: numberValue(region.max_difference, region.maxDifference),
+        measurements: region.measurements as Record<string, number> | undefined,
+      };
+    });
   };
 
-  const ela = elaRaw ? {
-    status: normalizeStatusValue(elaRaw.status),
-    visualizationUrl: stringValue(elaRaw.visualizationUrl, elaRaw.visualization_url, elaRaw.imageUrl, elaRaw.image_url),
-    difference: typeof elaRaw.difference === 'object' && elaRaw.difference !== null ? elaRaw.difference as Record<string, number> : typeof elaRaw.overall === 'object' && elaRaw.overall !== null ? elaRaw.overall as Record<string, number> : undefined,
-    rgb: normalizeRgb(elaRaw.rgb ?? elaRaw.rgbMeasurements ?? elaRaw.rgb_measurements),
-    regional: normalizeRegions(elaRaw.regional ?? elaRaw.regionalAnalysis ?? elaRaw.regional_analysis ?? elaRaw.regions),
-    observations: arrayValue(elaRaw.observations)?.filter((item): item is string => typeof item === 'string'),
+  // ELA normalization
+  const elaRaw = firstObject(elaAnalysis?.details, raw.ela, raw.elaAnalysis, raw.ela_analysis);
+  const ela: ELAProvisionalResult | undefined = elaRaw ? {
+    status: normalizeStatusValue(elaAnalysis?.status ?? elaRaw.status),
+    visualizationUrl: stringValue(elaRaw.difference_image_data_url, elaRaw.visualizationUrl, elaRaw.visualization_url, elaRaw.imageUrl, elaRaw.image_url),
+    recompressionQuality: numberValue(elaRaw.recompression_quality, elaRaw.recompressionQuality),
+    scaleFactor: numberValue(elaRaw.scale_factor, elaRaw.scaleFactor),
+    difference: {
+      'Mean diff': numberValue(elaRaw.mean_difference, (elaRaw.difference as Record<string, number>)?.mean) ?? 0,
+      'Median diff': numberValue(elaRaw.median_difference, (elaRaw.difference as Record<string, number>)?.median) ?? 0,
+      'Max diff': numberValue(elaRaw.max_difference, (elaRaw.difference as Record<string, number>)?.max) ?? 0,
+      'P95 diff': numberValue(elaRaw.p95_difference) ?? 0,
+      'P99 diff': numberValue(elaRaw.p99_difference) ?? 0,
+    },
+    channelMeans: typeof elaRaw.channel_means === 'object' && elaRaw.channel_means !== null ? elaRaw.channel_means as Record<string, number> : undefined,
+    channelMaxes: typeof elaRaw.channel_maxes === 'object' && elaRaw.channel_maxes !== null ? elaRaw.channel_maxes as Record<string, number> : undefined,
+    thresholdPercentages: typeof elaRaw.threshold_percentages === 'object' && elaRaw.threshold_percentages !== null ? elaRaw.threshold_percentages as Record<string, number> : undefined,
+    regional: normalizeRegions(elaRaw.regional_metrics ?? elaRaw.regional),
+    observations: arrayValue(elaAnalysis?.observations ?? elaRaw.observations)?.map(String),
+    limitations: arrayValue(elaAnalysis?.limitations ?? elaRaw.limitations)?.map(String),
   } : undefined;
 
-  const noise = noiseRaw ? {
-    status: normalizeStatusValue(noiseRaw.status),
-    visualizationUrl: stringValue(noiseRaw.visualizationUrl, noiseRaw.visualization_url, noiseRaw.imageUrl, noiseRaw.image_url),
-    gaussianSmoothing: typeof noiseRaw.gaussianSmoothing === 'string' || typeof noiseRaw.gaussianSmoothing === 'object' ? noiseRaw.gaussianSmoothing as string | Record<string, unknown> : typeof noiseRaw.gaussian_smoothing === 'string' || typeof noiseRaw.gaussian_smoothing === 'object' ? noiseRaw.gaussian_smoothing as string | Record<string, unknown> : undefined,
-    statistics: typeof noiseRaw.statistics === 'object' && noiseRaw.statistics !== null ? noiseRaw.statistics as Record<string, number> : typeof noiseRaw.measurements === 'object' && noiseRaw.measurements !== null ? noiseRaw.measurements as Record<string, number> : undefined,
-    rgb: normalizeRgb(noiseRaw.rgb ?? noiseRaw.rgbMeasurements ?? noiseRaw.rgb_measurements),
-    regional: normalizeRegions(noiseRaw.regional ?? noiseRaw.regionalAnalysis ?? noiseRaw.regional_analysis ?? noiseRaw.regions),
-    observations: arrayValue(noiseRaw.observations)?.filter((item): item is string => typeof item === 'string'),
+  // Noise Residual normalization
+  const noiseRaw = firstObject(noiseAnalysis?.details, raw.noise, raw.noiseResidual, raw.noise_residual, raw.noiseResidualAnalysis);
+  const noise: NoiseResidualProvisionalResult | undefined = noiseRaw ? {
+    status: normalizeStatusValue(noiseAnalysis?.status ?? noiseRaw.status),
+    visualizationUrl: stringValue(noiseRaw.visualization_data_url, noiseRaw.visualizationUrl, noiseRaw.visualization_url, noiseRaw.imageUrl, noiseRaw.image_url),
+    smoothingSigma: numberValue(noiseRaw.smoothing_sigma, noiseRaw.smoothingSigma),
+    gaussianSmoothing: stringValue(noiseRaw.gaussianSmoothing) ?? (numberValue(noiseRaw.smoothing_sigma) !== undefined ? `Gaussian σ = ${numberValue(noiseRaw.smoothing_sigma)}` : undefined),
+    statistics: {
+      'Mean residual': numberValue(noiseRaw.residual_mean, (noiseRaw.statistics as Record<string, number>)?.mean) ?? 0,
+      'Standard deviation (σ)': numberValue(noiseRaw.residual_std, (noiseRaw.statistics as Record<string, number>)?.std) ?? 0,
+      'Mean abs residual': numberValue(noiseRaw.mean_absolute_residual) ?? 0,
+      'Median abs residual': numberValue(noiseRaw.median_absolute_residual) ?? 0,
+      'Max abs residual': numberValue(noiseRaw.max_absolute_residual) ?? 0,
+      'P95 abs residual': numberValue(noiseRaw.p95_absolute_residual) ?? 0,
+      'P99 abs residual': numberValue(noiseRaw.p99_absolute_residual) ?? 0,
+    },
+    channelMeans: typeof noiseRaw.channel_residual_means === 'object' && noiseRaw.channel_residual_means !== null ? noiseRaw.channel_residual_means as Record<string, number> : undefined,
+    channelStds: typeof noiseRaw.channel_residual_stds === 'object' && noiseRaw.channel_residual_stds !== null ? noiseRaw.channel_residual_stds as Record<string, number> : undefined,
+    regional: normalizeRegions(noiseRaw.regional_metrics ?? noiseRaw.regional),
+    observations: arrayValue(noiseAnalysis?.observations ?? noiseRaw.observations)?.map(String),
+    limitations: arrayValue(noiseAnalysis?.limitations ?? noiseRaw.limitations)?.map(String),
   } : undefined;
 
-  const modulesValue = arrayValue(raw.modules);
-  const modules = modulesValue ? modulesValue.filter((item): item is Record<string, unknown> => !!item && typeof item === 'object').map(item => ({ name:stringValue(item.name, item.module) ?? 'Unnamed module', status:normalizeStatusValue(item.status) })) : [];
+  // Frequency Domain (2D FFT) normalization
+  const freqRaw = firstObject(freqAnalysis?.details, raw.frequency);
+  const frequency: FrequencyDomainResult | undefined = freqRaw ? {
+    status: normalizeStatusValue(freqAnalysis?.status ?? freqRaw.status),
+    visualizationUrl: stringValue(freqRaw.visualization_data_url, freqRaw.visualizationUrl),
+    analysisWidth: numberValue(freqRaw.analysis_width, freqRaw.analysisWidth),
+    analysisHeight: numberValue(freqRaw.analysis_height, freqRaw.analysisHeight),
+    originalWidth: numberValue(freqRaw.original_width, freqRaw.originalWidth),
+    originalHeight: numberValue(freqRaw.original_height, freqRaw.originalHeight),
+    isDownsampled: typeof freqRaw.is_downsampled === 'boolean' ? freqRaw.is_downsampled : false,
+    windowFunction: stringValue(freqRaw.window_function, freqRaw.windowFunction) ?? 'hann',
+    totalPower: numberValue(freqRaw.total_non_dc_power, freqRaw.totalPower),
+    lowFrequencyPower: numberValue(freqRaw.low_frequency_power, freqRaw.lowFrequencyPower),
+    midFrequencyPower: numberValue(freqRaw.mid_frequency_power, freqRaw.midFrequencyPower),
+    highFrequencyPower: numberValue(freqRaw.high_frequency_power, freqRaw.highFrequencyPower),
+    lowFrequencyEnergyPct: numberValue(freqRaw.low_frequency_energy_pct, freqRaw.lowFrequencyEnergyPct),
+    midFrequencyEnergyPct: numberValue(freqRaw.mid_frequency_energy_pct, freqRaw.midFrequencyEnergyPct),
+    highFrequencyEnergyPct: numberValue(freqRaw.high_frequency_energy_pct, freqRaw.highFrequencyEnergyPct),
+    spectralCentroid: numberValue(freqRaw.spectral_centroid, freqRaw.spectralCentroid),
+    spectralEntropy: numberValue(freqRaw.spectral_entropy, freqRaw.spectralEntropy),
+    metrics: {
+      lowEnergyPct: numberValue(freqRaw.low_frequency_energy_pct, freqRaw.lowFrequencyEnergyPct) ?? 0,
+      midEnergyPct: numberValue(freqRaw.mid_frequency_energy_pct, freqRaw.midFrequencyEnergyPct) ?? 0,
+      highEnergyPct: numberValue(freqRaw.high_frequency_energy_pct, freqRaw.highFrequencyEnergyPct) ?? 0,
+      spectralCentroid: numberValue(freqRaw.spectral_centroid, freqRaw.spectralCentroid) ?? 0,
+      spectralEntropy: numberValue(freqRaw.spectral_entropy, freqRaw.spectralEntropy) ?? 0,
+      windowFunction: stringValue(freqRaw.window_function) ?? 'hann',
+      isDownsampled: Boolean(freqRaw.is_downsampled),
+    },
+    observations: arrayValue(freqAnalysis?.observations ?? freqRaw.observations)?.map(String),
+    limitations: arrayValue(freqAnalysis?.limitations ?? freqRaw.limitations)?.map(String),
+  } : undefined;
 
-  const findingsValue = arrayValue(raw.findings);
-  const findings = findingsValue ? findingsValue.filter((item): item is Record<string, unknown> => !!item && typeof item === 'object').map((item,index) => ({ id:stringValue(item.id) ?? `finding-${index+1}`, title:stringValue(item.title, item.name) ?? 'Backend finding', severity:typeof item.severity === 'string' ? item.severity as Finding['severity'] : undefined, module:stringValue(item.module, item.relatedModule) ?? 'Unknown module', observation:stringValue(item.observation, item.description) ?? 'No observation supplied.', interpretation:stringValue(item.interpretation, item.possibleInterpretation), evidenceReference:stringValue(item.evidenceReference, item.evidence_reference), limitations:stringValue(item.limitations, item.limitationsText) })) : [];
+  // Regional Anomaly normalization
+  const regRaw = firstObject(regAnalysis?.details, raw.regional_anomaly, raw.regionalAnomaly);
+  const rawAnomalyItems = arrayValue(regRaw?.regional_anomalies) as Record<string, unknown>[] | undefined;
+  const anomalyTiles: RegionalAnomalyTile[] | undefined = rawAnomalyItems?.map(item => ({
+    regionId: stringValue(item.region_id) ?? '',
+    row: numberValue(item.row) ?? 0,
+    col: numberValue(item.col) ?? 0,
+    x: numberValue(item.x) ?? 0,
+    y: numberValue(item.y) ?? 0,
+    width: numberValue(item.width) ?? 0,
+    height: numberValue(item.height) ?? 0,
+    meanLuminance: numberValue(item.mean_luminance) ?? 0,
+    stdLuminance: numberValue(item.std_luminance) ?? 0,
+    minLuminance: numberValue(item.min_luminance) ?? 0,
+    maxLuminance: numberValue(item.max_luminance) ?? 0,
+    meanGradient: numberValue(item.mean_gradient) ?? 0,
+    stdGradient: numberValue(item.std_gradient) ?? 0,
+    edgeDensity: numberValue(item.edge_density) ?? 0,
+    noiseResidualStd: numberValue(item.noise_residual_std),
+    noiseMeanAbs: numberValue(item.noise_mean_abs),
+    elaMean: numberValue(item.ela_mean),
+    elaVariance: numberValue(item.ela_variance),
+    regionalFftHighFreqRatio: numberValue(item.regional_fft_high_freq_ratio),
+    deviationScore: numberValue(item.deviation_score) ?? 0,
+    neighborDeviation: numberValue(item.neighbor_deviation) ?? 0,
+    zScores: typeof item.z_scores === 'object' && item.z_scores !== null ? item.z_scores as Record<string, number> : undefined,
+    observation: stringValue(item.observation) ?? '',
+  }));
 
-  const imageEvidence = imageRaw || ela || noise || exif ? {
-    status: normalizeStatusValue(raw.analysisStatus ?? raw.status ?? imageRaw?.status),
-    originalImageUrl:stringValue(raw.originalImageUrl, raw.original_image_url, raw.fileUrl, raw.file_url, imageRaw?.originalImageUrl, imageRaw?.original_image_url),
-    fileFormat:stringValue(raw.fileFormat, raw.file_format, raw.format, imageRaw?.fileFormat, imageRaw?.format),
-    fileSize:numberValue(raw.fileSize, raw.file_size, imageRaw?.fileSize, imageRaw?.file_size),
-    width:numberValue(raw.width, raw.imageWidth, raw.image_width, imageRaw?.width, imageRaw?.imageWidth, imageRaw?.image_width),
-    height:numberValue(raw.height, raw.imageHeight, raw.image_height, imageRaw?.height, imageRaw?.imageHeight, imageRaw?.image_height),
-    resolution:stringValue(raw.resolution, imageRaw?.resolution),
-    sha256:stringValue(raw.sha256, raw.sha_256, imageRaw?.sha256, imageRaw?.sha_256),
+  const regionalAnomaly: RegionalAnomalyResult | undefined = regRaw ? {
+    status: normalizeStatusValue(regAnalysis?.status ?? regRaw.status),
+    visualizationUrl: stringValue(regRaw.visualization_data_url, regRaw.visualizationUrl),
+    gridRows: numberValue(regRaw.grid_rows) ?? 4,
+    gridCols: numberValue(regRaw.grid_cols) ?? 4,
+    totalRegions: numberValue(regRaw.total_regions) ?? 16,
+    analyzedFeatures: arrayValue(regRaw.analyzed_features)?.map(String),
+    activeModulesUsed: arrayValue(regRaw.active_modules_used)?.map(String),
+    maxDeviationScore: numberValue(regRaw.max_deviation_score),
+    meanDeviationScore: numberValue(regRaw.mean_deviation_score),
+    highestDeviationRegionId: stringValue(regRaw.highest_deviation_region_id),
+    tiles: anomalyTiles,
+    regionalSummary: typeof regRaw.regional_summary === 'object' && regRaw.regional_summary !== null ? regRaw.regional_summary as Record<string, number> : undefined,
+    observations: arrayValue(regAnalysis?.observations ?? regRaw.observations)?.map(String),
+    limitations: arrayValue(regAnalysis?.limitations ?? regRaw.limitations)?.map(String),
+  } : undefined;
+
+  // Synthesis & Aggregation normalization (Phase 3)
+  const synthRaw = firstObject(synthAnalysis?.details, raw.synthesis);
+  const evidenceSummaryRaw = firstObject(synthRaw?.evidence_summary);
+  const evidenceSummary: EvidenceSummary | undefined = evidenceSummaryRaw ? {
+    relationship: (stringValue(evidenceSummaryRaw.relationship) ?? 'insufficient_evidence') as EvidenceRelationship,
+    domainsAvailable: numberValue(evidenceSummaryRaw.domains_available) ?? 0,
+    domainsWithObservations: numberValue(evidenceSummaryRaw.domains_with_observations) ?? 0,
+    primaryContributingDomains: arrayValue(evidenceSummaryRaw.primary_contributing_domains)?.map(String) ?? [],
+    synthesisStatement: stringValue(evidenceSummaryRaw.synthesis_statement) ?? '',
+  } : undefined;
+
+  const rawDomains = arrayValue(synthRaw?.domains) as Record<string, unknown>[] | undefined;
+  const synthDomains: EvidenceDomainItem[] | undefined = rawDomains?.map(d => ({
+    domainId: stringValue(d.domain_id) ?? '',
+    domainName: stringValue(d.domain_name) ?? '',
+    status: stringValue(d.status) ?? '',
+    hasNotableVariation: Boolean(d.has_notable_variation),
+    summary: stringValue(d.summary) ?? '',
+    metrics: typeof d.metrics === 'object' && d.metrics !== null ? d.metrics as Record<string, unknown> : undefined,
+    observations: arrayValue(d.observations)?.map(String),
+  }));
+
+  const rawKeyObs = arrayValue(synthRaw?.key_observations) as Record<string, unknown>[] | undefined;
+  const keyObservations: KeyObservation[] | undefined = rawKeyObs?.map((item, idx) => ({
+    observationId: stringValue(item.observation_id) ?? `obs-${idx + 1}`,
+    title: stringValue(item.title) ?? 'Observed Pattern',
+    description: stringValue(item.description) ?? '',
+    relevantDomains: arrayValue(item.relevant_domains)?.map(String) ?? [],
+    supportingMetrics: typeof item.supporting_metrics === 'object' && item.supporting_metrics !== null ? item.supporting_metrics as Record<string, unknown> : undefined,
+    regionIds: arrayValue(item.region_ids)?.map(String) ?? [],
+    neutralInterpretation: stringValue(item.neutral_interpretation) ?? '',
+    limitations: arrayValue(item.limitations)?.map(String) ?? [],
+  }));
+
+  const rawCrossRel = arrayValue(synthRaw?.cross_domain_relationships) as Record<string, unknown>[] | undefined;
+  const crossDomainRelationships: CrossDomainRelationship[] | undefined = rawCrossRel?.map(rel => ({
+    domains: arrayValue(rel.domains)?.map(String) ?? [],
+    relationshipType: (stringValue(rel.relationship_type) ?? 'independent') as CrossDomainRelationship['relationshipType'],
+    description: stringValue(rel.description) ?? '',
+    supportingEvidence: arrayValue(rel.supporting_evidence)?.map(String) ?? [],
+  }));
+
+  const rawRegSynth = firstObject(synthRaw?.regional_synthesis);
+  const rawRegSynthTiles = arrayValue(rawRegSynth?.tiles) as Record<string, unknown>[] | undefined;
+  const regionalSynthesis: RegionalSynthesis | undefined = rawRegSynth ? {
+    gridRows: numberValue(rawRegSynth.grid_rows) ?? 4,
+    gridCols: numberValue(rawRegSynth.grid_cols) ?? 4,
+    totalRegions: numberValue(rawRegSynth.total_regions) ?? 16,
+    elevatedRegions: arrayValue(rawRegSynth.elevated_regions)?.map(String) ?? [],
+    lowVariationRegions: arrayValue(rawRegSynth.low_variation_regions)?.map(String) ?? [],
+    multiDomainRegions: arrayValue(rawRegSynth.multi_domain_regions)?.map(String) ?? [],
+    singleDomainRegions: arrayValue(rawRegSynth.single_domain_regions)?.map(String) ?? [],
+    summary: stringValue(rawRegSynth.summary) ?? '',
+    tiles: rawRegSynthTiles?.map(t => ({
+      regionId: stringValue(t.region_id) ?? '',
+      row: numberValue(t.row) ?? 0,
+      col: numberValue(t.col) ?? 0,
+      variationLevel: (stringValue(t.variation_level) ?? 'typical') as RegionalSynthesisTile['variationLevel'],
+      contributingDomains: arrayValue(t.contributing_domains)?.map(String) ?? [],
+      domainCountWithVariation: numberValue(t.domain_count_with_variation) ?? 0,
+      isMultiDomainVariation: Boolean(t.is_multi_domain_variation),
+      neighborContrast: (stringValue(t.neighbor_contrast) ?? 'consistent') as RegionalSynthesisTile['neighborContrast'],
+      summary: stringValue(t.summary) ?? '',
+    })) ?? [],
+  } : undefined;
+
+  const rawMethodology = firstObject(synthRaw?.methodology);
+  const methodology = rawMethodology ? {
+    version: stringValue(rawMethodology.version) ?? '3.0',
+    correlatedFeaturePolicy: stringValue(rawMethodology.correlated_feature_policy) ?? '',
+    aggregationApproach: stringValue(rawMethodology.aggregation_approach) ?? '',
+    disclaimer: stringValue(rawMethodology.disclaimer) ?? '',
+  } : undefined;
+
+  const synthesis: SynthesisResult | undefined = synthRaw ? {
+    status: normalizeStatusValue(synthAnalysis?.status ?? synthRaw.status),
+    evidenceSummary,
+    domains: synthDomains,
+    crossDomainRelationships,
+    keyObservations,
+    regionalSynthesis,
+    methodology,
+    observations: arrayValue(synthAnalysis?.observations ?? synthRaw.observations)?.map(String),
+    limitations: arrayValue(synthAnalysis?.limitations ?? synthRaw.limitations)?.map(String),
+  } : undefined;
+
+  // Structured assessment from backend
+  const rawAssessment = firstObject(raw.assessment);
+  let assessmentDetails: AssessmentInfo | undefined;
+  if (rawAssessment) {
+    const statusVal = stringValue(rawAssessment.status)?.toUpperCase();
+    const validStatus = statusVal === 'COMPLETE' || statusVal === 'INCOMPLETE' || statusVal === 'INCONCLUSIVE' ? statusVal : 'COMPLETE';
+    assessmentDetails = {
+      status: validStatus,
+      summary: stringValue(rawAssessment.summary) ?? (evidenceSummary?.synthesisStatement || 'Forensic analysis completed.'),
+      limitations: asArray(rawAssessment.limitations),
+      relationship: evidenceSummary?.relationship,
+    };
+  }
+
+  // Modules list
+  const modules: ModuleStatus[] = rawAnalysesList
+    ? rawAnalysesList.map(item => ({
+        name: stringValue(item.name) ?? 'Module',
+        status: normalizeStatusValue(item.status),
+      }))
+    : [
+        { name: 'Metadata & EXIF', status: exif ? 'completed' : 'unavailable' },
+        { name: 'Error Level Analysis', status: ela ? 'completed' : 'unavailable' },
+        { name: 'Noise Residual', status: noise ? 'completed' : 'unavailable' },
+        { name: 'Frequency Domain (FFT)', status: frequency ? 'completed' : 'unavailable' },
+        { name: 'Regional Anomaly', status: regionalAnomaly ? 'completed' : 'unavailable' },
+        { name: 'Evidence Synthesis', status: synthesis ? 'completed' : 'unavailable' },
+      ];
+
+  // Findings list from key observations or module observations
+  const findings: Finding[] = [];
+  if (keyObservations && keyObservations.length > 0) {
+    keyObservations.forEach(obs => {
+      findings.push({
+        id: obs.observationId,
+        title: obs.title,
+        severity: 'informational',
+        module: obs.relevantDomains.join(', ') || 'Evidence Synthesis',
+        observation: obs.description,
+        interpretation: obs.neutralInterpretation,
+        evidenceReference: obs.regionIds.length > 0 ? `Regions: ${obs.regionIds.join(', ')}` : undefined,
+        limitations: obs.limitations.length > 0 ? obs.limitations.join('; ') : undefined,
+      });
+    });
+  } else if (rawAnalysesList) {
+    rawAnalysesList.forEach(a => {
+      const obs = arrayValue(a.observations)?.map(String);
+      if (obs && obs.length > 0) {
+        obs.forEach((text, i) => {
+          findings.push({
+            id: `${a.name}-obs-${i + 1}`,
+            title: `${String(a.name).toUpperCase()} observation`,
+            severity: 'informational',
+            module: String(a.name),
+            observation: text,
+          });
+        });
+      }
+    });
+  }
+
+  const imageProperties: ImageProperties | undefined = rawImageProperties ? {
+    filename: stringValue(rawImageProperties.filename),
+    format: stringValue(rawImageProperties.format),
+    mimeType: stringValue(rawImageProperties.mime_type, rawImageProperties.mimeType),
+    sizeBytes: numberValue(rawImageProperties.size_bytes, rawImageProperties.sizeBytes),
+    sizeReadable: stringValue(rawImageProperties.size_readable, rawImageProperties.sizeReadable),
+    width: numberValue(rawImageProperties.width),
+    height: numberValue(rawImageProperties.height),
+    aspectRatio: numberValue(rawImageProperties.aspect_ratio, rawImageProperties.aspectRatio),
+    pixelCount: numberValue(rawImageProperties.pixel_count, rawImageProperties.pixelCount),
+    mode: stringValue(rawImageProperties.mode),
+    hasTransparency: typeof rawImageProperties.has_transparency === 'boolean' ? rawImageProperties.has_transparency : false,
+    size: numberValue(rawImageProperties.size_bytes),
+  } : undefined;
+
+  const imageEvidence: ImageForensicEvidence | undefined = (exif || ela || noise || frequency || regionalAnomaly || synthesis || rawImageProperties) ? {
+    status: normalizeStatusValue(raw.analysisStatus ?? raw.status ?? (rawAnalysesList?.length ? 'completed' : 'unavailable')),
+    originalImageUrl: stringValue(raw.originalImageUrl, raw.original_image_url, raw.fileUrl),
+    fileFormat: stringValue(imageProperties?.format, raw.fileFormat, raw.format),
+    fileSize: numberValue(imageProperties?.sizeBytes, raw.fileSize, raw.size),
+    width: numberValue(imageProperties?.width, raw.width),
+    height: numberValue(imageProperties?.height, raw.height),
+    resolution: imageProperties?.width && imageProperties?.height ? `${imageProperties.width} × ${imageProperties.height} px` : undefined,
+    sha256: stringValue(raw.sha256, raw.sha_256),
     exif,
     ela,
     noise,
-    frequencyStatus:'unavailable' as AnalysisStatus,
-    regionalStatus:'unavailable' as AnalysisStatus,
-    evidenceStatus:(evidenceRaw?'completed':'unavailable') as AnalysisStatus,
-    evidence:evidenceRaw ? {
-      observedIndicators:arrayValue(evidenceRaw.observedIndicators, evidenceRaw.indicators)?.filter((item):item is string=>typeof item==='string'),
-      supportingEvidence:arrayValue(evidenceRaw.supportingEvidence, evidenceRaw.supporting_evidence)?.filter((item):item is string=>typeof item==='string'),
-      potentialAnomalies:arrayValue(evidenceRaw.potentialAnomalies, evidenceRaw.potential_anomalies)?.filter((item):item is string=>typeof item==='string'),
-      limitations:arrayValue(evidenceRaw.limitations)?.filter((item):item is string=>typeof item==='string'),
-      interpretationNotes:arrayValue(evidenceRaw.interpretationNotes, evidenceRaw.notes)?.filter((item):item is string=>typeof item==='string'),
-    } : undefined,
+    frequency,
+    regionalAnomaly,
+    synthesis,
+    frequencyStatus: frequency?.status ?? 'unavailable',
+    regionalStatus: regionalAnomaly?.status ?? 'unavailable',
+    evidenceStatus: synthesis?.status ?? 'unavailable',
+    evidence: {
+      observedIndicators: keyObservations?.map(o => o.description) ?? [],
+      supportingEvidence: crossDomainRelationships?.map(r => `${r.relationshipType}: ${r.description}`) ?? [],
+      potentialAnomalies: regionalSynthesis?.elevatedRegions.map(r => `Elevated regional variation in ${r}`) ?? [],
+      limitations: synthesis?.limitations ?? assessmentDetails?.limitations ?? [],
+      interpretationNotes: keyObservations?.map(o => o.neutralInterpretation) ?? [],
+    },
   } : undefined;
 
   return {
-    id:stringValue(raw.id,raw.investigationId,raw.investigation_id),
-    filenames:asArray(raw.filenames).length ? asArray(raw.filenames) : typeof raw.filename==='string' ? [raw.filename] : typeof raw.originalFilename==='string' ? [raw.originalFilename] : [],
-    mediaTypes:Array.isArray(raw.mediaTypes)?raw.mediaTypes as InvestigationResult['mediaTypes']:imageRaw?['image']:[],
-    timestamp:stringValue(raw.timestamp,raw.createdAt,raw.created_at,raw.analysisTimestamp,raw.analysis_timestamp),
-    sha256:typeof raw.sha256==='string'?[raw.sha256]:Array.isArray(raw.sha256)?asArray(raw.sha256):typeof raw.sha_256==='string'?[raw.sha_256]:[],
-    fileFormat:stringValue(raw.fileFormat,raw.file_format,raw.format,imageRaw?.fileFormat,imageRaw?.format),
-    fileSize:numberValue(raw.fileSize,raw.file_size,imageRaw?.fileSize,imageRaw?.file_size),
-    analysisStatus:normalizeStatusValue(raw.analysisStatus ?? raw.status ?? imageRaw?.status),
+    id: stringValue(raw.id, raw.investigationId, raw.investigation_id) ?? (raw.sha256 ? String(raw.sha256).slice(0, 16) : undefined),
+    filenames: asArray(raw.filenames).length ? asArray(raw.filenames) : typeof imageProperties?.filename === 'string' ? [imageProperties.filename] : typeof raw.filename === 'string' ? [raw.filename] : [],
+    mediaTypes: ['image'],
+    timestamp: stringValue(raw.timestamp, raw.createdAt, raw.created_at, raw.analysisTimestamp) ?? new Date().toISOString(),
+    sha256: typeof raw.sha256 === 'string' ? [raw.sha256] : Array.isArray(raw.sha256) ? asArray(raw.sha256) : [],
+    fileFormat: stringValue(imageProperties?.format, raw.fileFormat, raw.format),
+    fileSize: numberValue(imageProperties?.sizeBytes, raw.fileSize),
+    analysisStatus: normalizeStatusValue(raw.analysisStatus ?? raw.status ?? (rawAnalysesList?.length ? 'completed' : 'unavailable')),
+    imageProperties,
     imageEvidence,
-    assessment:typeof raw.assessment==='string'?raw.assessment as InvestigationResult['assessment']:undefined,
-    modules,findings,
+    assessment: assessmentDetails ?? (typeof raw.assessment === 'string' ? raw.assessment as InvestigationResult['assessment'] : undefined),
+    assessmentDetails,
+    modules,
+    findings,
+    rawResponse: raw,
   };
 }
 
-
 function normalizeStatus(value: unknown): AnalysisStatus {
-  if (value === 'pending' || value === 'queued' || value === 'running' || value === 'processing' || value === 'completed' || value === 'failed' || value === 'unavailable') {
+  if (value === 'pending' || value === 'queued' || value === 'running' || value === 'processing' || value === 'completed' || value === 'ok' || value === 'failed' || value === 'unavailable') {
     if (value === 'queued') return 'pending';
     if (value === 'processing') return 'running';
+    if (value === 'ok') return 'completed';
     return value;
   }
   return 'unavailable';
@@ -262,15 +582,40 @@ export async function submitText(payload: Omit<AnalysisPayload, 'mediaType'> & {
 export async function submitAnalysis(payload: AnalysisPayload, options: SubmissionOptions = {}): Promise<AnalysisSubmission> {
   if (!backendUrl) throw new AnalysisConnectionError();
   const path = getSubmitPath(payload.mediaType);
-  if (!path) throw new AnalysisContractError('Analysis submission endpoint is not configured. Set VITE_TRUTHLENS_ANALYSIS_PATH or a media-specific analysis path.');
+  if (!path) throw new AnalysisContractError('Analysis submission endpoint is not configured. Set VITE_TRUTHLENS_ANALYSIS_PATH.');
 
   const form = new FormData();
-  form.append('mediaType', payload.mediaType);
-  if (payload.file) form.append('media', payload.file);
-  if (payload.text) form.append('text', payload.text);
+  if (payload.file) {
+    // TruthLens backend specifically requires `file: UploadFile = File(...)`
+    form.append('file', payload.file);
+  }
+  if (payload.text) {
+    form.append('text', payload.text);
+  }
 
-  const response = await fetchWithTimeout(joinUrl(path), { method: 'POST', body: form }, options.timeoutMs ?? (Number.isFinite(configuredRequestTimeout) && configuredRequestTimeout > 0 ? configuredRequestTimeout : 30000), options.signal);
-  if (!response.ok) throw new Error(`Backend request failed (${response.status})`);
+  const response = await fetchWithTimeout(
+    joinUrl(path),
+    { method: 'POST', body: form },
+    options.timeoutMs ?? (Number.isFinite(configuredRequestTimeout) && configuredRequestTimeout > 0 ? configuredRequestTimeout : 60000),
+    options.signal
+  );
+
+  if (!response.ok) {
+    let errorMessage = `Backend request failed (${response.status})`;
+    try {
+      const errBody = await response.json() as Record<string, unknown>;
+      if (errBody?.detail) {
+        errorMessage = typeof errBody.detail === 'string' ? errBody.detail : JSON.stringify(errBody.detail);
+      } else if (errBody?.error && typeof errBody.error === 'object') {
+        const errorDetail = errBody.error as Record<string, unknown>;
+        if (typeof errorDetail.message === 'string') errorMessage = errorDetail.message;
+      }
+    } catch {
+      // fallback to status code message
+    }
+    throw new Error(errorMessage);
+  }
+
   const raw = await response.json() as Record<string, unknown>;
 
   const jobId = raw.jobId ?? raw.job_id;
@@ -299,7 +644,7 @@ export function buildStatusUrl(job: AnalysisJob): string | undefined {
 
 export async function pollAnalysisJob(job: AnalysisJob, options: PollOptions = {}): Promise<AnalysisJob> {
   const url = buildStatusUrl(job);
-  if (!url) throw new AnalysisContractError('Job status endpoint is not configured. Set VITE_TRUTHLENS_STATUS_PATH or return a status URL from submission.');
+  if (!url) throw new AnalysisContractError('Job status endpoint is not configured. Set VITE_TRUTHLENS_STATUS_PATH.');
 
   const interval = options.intervalMs ?? (Number.isFinite(configuredPollInterval) && configuredPollInterval > 0 ? configuredPollInterval : 1500);
   let current = job;
