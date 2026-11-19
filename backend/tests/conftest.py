@@ -38,6 +38,7 @@ def client(settings: Settings, monkeypatch: pytest.MonkeyPatch) -> Iterator[Test
     monkeypatch.setattr("app.core.config.get_settings", lambda: settings)
     monkeypatch.setattr("app.main.get_settings", lambda: settings)
     monkeypatch.setattr("app.api.routes.health.get_settings", lambda: settings)
+    monkeypatch.setattr("app.api.routes.analyze.get_settings", lambda: settings)
     monkeypatch.setattr("app.services.validation.get_settings", lambda: settings)
 
     application = create_app()

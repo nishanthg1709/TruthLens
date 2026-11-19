@@ -97,3 +97,37 @@ def format_bytes(num_bytes: int) -> str:
     if unit_index == 0:
         return f"{int(size)} B"
     return f"{size:.1f} {units[unit_index]}"
+
+
+def partition_grid(
+    width: int,
+    height: int,
+    grid_size: tuple[int, int],
+) -> list[tuple[int, int, int, int, int, int, str]]:
+    """Partition image dimensions into a grid of tiles.
+
+    Guarantees 100% pixel coverage without gaps or overlapping regions.
+
+    Args:
+        width: Image width in pixels.
+        height: Image height in pixels.
+        grid_size: (rows, cols) tile count.
+
+    Returns:
+        List of (row, col, x1, y1, x2, y2, region_id) tuples.
+    """
+    rows, cols = max(1, grid_size[0]), max(1, grid_size[1])
+    row_height = height / rows
+    col_width = width / cols
+    tiles: list[tuple[int, int, int, int, int, int, str]] = []
+
+    for r in range(rows):
+        y1 = int(round(r * row_height))
+        y2 = height if r == rows - 1 else int(round((r + 1) * row_height))
+        for c in range(cols):
+            x1 = int(round(c * col_width))
+            x2 = width if c == cols - 1 else int(round((c + 1) * col_width))
+            region_id = f"r{r}_c{c}"
+            tiles.append((r, c, x1, y1, x2, y2, region_id))
+
+    return tiles

@@ -2,20 +2,24 @@
 
 FastAPI service for image forensic analysis.
 
-**Phase:** `phase_2a`  
+**Phase:** `phase_2e`  
 **Tagline:** See beyond the image. Verify what is real.
 
 ## Overview
 
-Phase 2A provides:
+Phase 2E provides:
 
 1. Safe image upload intake (in-memory)
 2. Format and integrity validation
 3. Image property extraction
 4. SHA-256 fingerprinting of the original file bytes
 5. EXIF / metadata extraction and interpretation
+6. Error Level Analysis (ELA) engine for JPEG images
+7. Noise residual analysis for JPEG, PNG, and WEBP images
+8. Frequency-domain analysis using 2D Fast Fourier Transform (FFT)
+9. Regional anomaly analysis across spatial grid partitions
 
-ELA, noise, frequency, regional anomaly, and authenticity scoring are **not** implemented and are never fabricated.
+AI image detection, binary fake/authentic classifications, and synthetic manipulation probabilities are **strictly not implemented** and are never fabricated.
 
 ## Architecture
 
@@ -23,11 +27,11 @@ ELA, noise, frequency, regional anomaly, and authenticity scoring are **not** im
 backend/
 ├── app/
 │   ├── main.py              # FastAPI app, CORS, routers
-│   ├── api/routes/          # HTTP endpoints
+│   ├── api/routes/          # HTTP endpoints (analyze, health)
 │   ├── core/                # Settings and error handling
 │   ├── models/              # Pydantic response contracts
-│   ├── services/            # Validation, hashing, metadata
-│   └── utils/               # Image I/O helpers
+│   ├── services/            # Validation, hashing, metadata, ELA, noise, frequency, regional
+│   └── utils/               # Image I/O helpers and grid partitioner
 ├── tests/
 ├── requirements.txt
 ├── .env.example
@@ -57,6 +61,12 @@ cp .env.example .env               # optional local overrides
 | `MAX_UPLOAD_BYTES` | `15728640` (15 MB) | Max upload size |
 | `MAX_IMAGE_DIMENSION` | `12000` | Max width or height |
 | `MAX_PIXEL_COUNT` | `40000000` | Max total pixels |
+| `ELA_DEFAULT_QUALITY` | `90` | Default recompression quality for ELA (1–100) |
+| `NOISE_DEFAULT_SIGMA` | `1.0` | Default Gaussian smoothing sigma for noise analysis |
+| `FFT_MAX_DIMENSION` | `2048` | Max image dimension before 2D FFT downsampling |
+| `REGIONAL_GRID_ROWS` | `4` | Default vertical grid rows for regional analysis |
+| `REGIONAL_GRID_COLS` | `4` | Default horizontal grid columns for regional analysis |
+| `REGIONAL_EDGE_THRESHOLD` | `15.0` | Gradient magnitude threshold for edge density |
 
 See `.env.example` for safe placeholders. Do not commit a real `.env`.
 
@@ -138,24 +148,186 @@ curl -X POST "http://localhost:8000/api/v1/analyze" \
 
 Empty EXIF is reported as `completed` with `exif_present: false`, not as failure.
 
+## Error Level Analysis (Phase 2B)
+
+### Overview
+
+Error Level Analysis (ELA) identifies differences in JPEG compression levels across an image:
+
+1. Decodes the validated JPEG into RGB.
+2. Recompresses the image in memory at a controlled baseline quality (default: `90`).
+3. Decodes the recompressed image and verifies identical spatial dimensions.
+4. Computes absolute pixel differences across RGB channels: `abs(original - recompressed)`.
+5. Computes image-level distribution metrics, channel metrics, threshold exceedance percentages, and regional grid statistics.
+6. Generates a normalized difference visualization as a base64 PNG data URL.
+7. Produces factual forensic observations and limitations.
+
+### Supported formats
+
+| Format | ELA Status | Notes |
+|--------|------------|-------|
+| JPEG | `completed` | Recompression analysis executed |
+| PNG | `unavailable` | ELA is specific to JPEG lossy DCT compression |
+| WEBP | `unavailable` | Non-JPEG format |
+
+### ELA Metrics
+
+- **Mean absolute pixel difference:** Global average pixel error on a 0–255 scale
+- **Median difference:** 50th percentile of absolute error
+- **Maximum difference:** Peak error observed (0–255)
+- **95th and 99th percentiles:** Upper-tail error distribution
+- **Threshold exceedance percentages:** Percentage of pixels exceeding difference thresholds (5, 10, 15, 20, 30, 50)
+- **Channel metrics:** Per-channel mean and maximum difference for Red, Green, and Blue
+- **Regional metrics:** Spatial grid partition (e.g. 4x4) computing mean, variance, and max difference per tile
+- **Regional summary:** Minimum, maximum, spread, and variance across regions
+
+### Forensic interpretation principles
+
+- ELA indicates relative compression artifacts against a recompression baseline, not absolute authenticity.
+- High-frequency edges and complex textures naturally exhibit higher error due to discrete cosine transform (DCT) quantization.
+- Uniform error does not prove lack of manipulation; localized variations do not prove forgery.
+- Never classifies images as real/fake or calculates authenticity probabilities.
+
+## Noise Residual Analysis (Phase 2C)
+
+### Overview
+
+Noise Residual Analysis extracts high-frequency spatial deviations from an image by suppressing underlying low-frequency image structure:
+
+1. Decodes the validated image to RGB.
+2. Applies a Gaussian low-pass filter to RGB channels using a controlled standard deviation (`sigma=1.0` by default).
+3. Converts original and smoothed images to `float32`.
+4. Calculates the signed pixel residual:
+   $$\text{Residual} = \text{Original Image} - \text{Smoothed Image}$$
+5. Computes signed residual statistics and absolute residual magnitude metrics.
+6. Computes regional residual distribution using a 4×4 spatial grid.
+7. Normalizes the absolute residual magnitude for visualization (base64 PNG data URL) without altering analytical metrics.
+8. Produces neutral, factual forensic observations and limitations.
+
+### Supported formats
+
+| Format | Noise Analysis Status | Notes |
+|--------|-----------------------|-------|
+| JPEG | `completed` | Spatial filter applied across RGB pixels |
+| PNG | `completed` | Supported for all validated PNG modes |
+| WEBP | `completed` | Supported for all validated WEBP modes |
+
+### Metrics returned
+
+- **Residual mean:** Signed average residual across all channels (scale: -255 to +255)
+- **Residual standard deviation:** Global dispersion of the signed residual
+- **Mean absolute residual:** Average residual magnitude on a 0–255 scale
+- **Median absolute residual:** 50th percentile of residual magnitude
+- **Maximum absolute residual:** Peak absolute residual observed
+- **95th and 99th percentiles:** Upper-tail magnitude distribution
+- **Channel metrics:** Per-channel signed mean, standard deviation, and mean absolute residual for Red, Green, and Blue
+- **Regional metrics:** 4×4 spatial grid partition (`RegionalNoiseMetric`) computing mean absolute residual (`mean_difference`), residual standard deviation (`std`), and maximum absolute residual (`max_difference`) per tile
+- **Regional summary:** Minimum, maximum, spread, and average regional standard deviation
+
+### Forensic interpretation principles and limitations
+
+- **Edges and textures:** High-frequency content, high-contrast boundaries, and complex textures naturally yield elevated residual magnitudes because low-pass filtering attenuates sharp transitions.
+- **Processing history:** Routine operations like JPEG recompression, sharpening, downsampling, and denoising alter residual noise distributions non-linearly.
+- **Sensor variations:** Authentic physical cameras produce widely varying noise levels depending on sensor model, ISO rating, sensor temperature, and ambient exposure.
+- **AI and manipulation:** Noise uniformity or regional disparity cannot prove or disprove AI generation or digital manipulation.
+- **No verdicts:** TruthLens never outputs authenticity scores, manipulation probabilities, or binary real/fake determinations.
+
+## Frequency Domain Analysis (2D FFT)
+
+### Algorithm and Pipeline
+
+1. **Luminance conversion:** ITU-R BT.601 conversion ($Y = 0.299R + 0.587G + 0.114B$) on 32-bit float RGB values.
+2. **DC suppression:** Spatial mean subtraction of the image luminance array.
+3. **Windowing:** Separable 2D Hann window to reduce spectral edge leakage.
+4. **2D FFT & shift:** `numpy.fft.fft2` and `fftshift` to position zero frequency at spectrum center.
+5. **Radial partitioning:** Normalized frequency radius $r \in [0, \sqrt{2}]$ split into:
+   - Low frequency: $0.0 < r < 0.10$
+   - Mid frequency: $0.10 \le r < 0.40$
+   - High frequency: $r \ge 0.40$
+6. **Spectral metrics:** Non-DC spectral power percentages, spectral centroid, and normalized Shannon spectral entropy.
+7. **Visualization:** Normalized centered log-magnitude spectrum ($\log(1 + |\mathcal{F}|)$) encoded as base64 PNG data URL.
+
+## Regional Anomaly Analysis
+
+### Objective and Principles
+
+The Regional Anomaly Analysis engine examines spatial variations across the image and measures how individual regions differ statistically from image-wide distributions and from adjacent neighbors.
+
+**Forensic Principle:** Spatial differences occur naturally in photographic images due to illumination gradients, depth of field, scene content, shadows, camera autofocus, and texture variations. Statistical deviation indicates contrast in measured properties, **not** proof of manipulation, AI generation, or forgery.
+
+### Grid Partitioning
+
+- Default partition: 4×4 uniform grid (16 tiles).
+- Uses shared `partition_grid` algorithm to ensure 100% pixel coverage without gaps or overlaps.
+- Non-divisible dimensions are handled gracefully via integer rounding with exact boundary anchoring.
+- Small images and edge regions are handled safely without zero-dimension crashes.
+
+### Extracted Regional Features
+
+Each region extracts a structured feature set:
+
+1. **Luminance / Intensity:**
+   - Mean luminance
+   - Standard deviation of luminance
+   - Minimum and maximum luminance
+2. **Texture and Spatial Characteristics:**
+   - Mean gradient magnitude
+   - Gradient standard deviation (texture variation)
+   - Edge density (percentage of pixels exceeding gradient threshold)
+3. **Noise Residual Integration:**
+   - Residual standard deviation (`noise_residual_std`)
+   - Mean absolute residual (`noise_mean_abs`)
+   - Reused directly from the Noise analysis service without duplicate computation
+4. **Error Level Analysis Integration:**
+   - Mean recompression difference (`ela_mean`)
+   - Difference variance (`ela_variance`)
+   - Reused directly when available (JPEG images)
+5. **Regional Frequency Analysis:**
+   - Regional high-frequency energy ratio computed via localized 2D FFT on tile luminance if tile dimensions $\ge 8\times 8$ pixels.
+
+### Statistical Deviation Scoring
+
+To provide robust comparison resilient against outliers, deviation scores use **Median and Median Absolute Deviation (MAD)** modified Z-scores:
+
+$$Z_{i, k} = \frac{|x_{i, k} - \text{median}(X_k)|}{1.4826 \cdot \text{MAD}(X_k) + \epsilon}$$
+
+If $\text{MAD} = 0$, standard deviation is used as fallback. If $\sigma = 0$ (e.g. completely uniform image), $Z_{i, k} = 0.0$.
+
+- **Composite Deviation Score:**
+  $$S_i = \frac{1}{|\mathcal{K}|} \sum_{k \in \mathcal{K}} Z_{i, k}$$
+- **Spatial Neighbor Deviation:** Average standardized feature distance between region $(r, c)$ and its 4-connected adjacent grid neighbors.
+
+### Visualization
+
+- Clean semi-transparent overlay rendered on top of the image.
+- Color ramp mapping deviation score:
+  - Cool Blue (0.0): Low deviation / consistent with image-wide median
+  - Amber (0.5): Moderate spatial variation
+  - Crimson (1.0): Elevated statistical contrast
+- Region boundaries and ID labels (`r{row}_c{col}`).
+- Legend color bar at the bottom indicating scale and explicit non-tampering disclaimer.
+- Base64 encoded as PNG data URL (`visualization_data_url`).
+
 ## Implemented forensic modules
 
 1. Image validation and properties
 2. SHA-256 identity fingerprint
 3. EXIF / metadata analysis
+4. Error Level Analysis (ELA)
+5. Noise residual analysis
+6. Frequency domain analysis (2D FFT)
+7. Regional anomaly analysis
 
 ## Unimplemented modules
 
-1. Error Level Analysis (ELA)
-2. Noise residual analysis
-3. Frequency-domain analysis
-4. Regional anomaly analysis
-5. Multi-signal evidence assessment beyond `INCOMPLETE`
+1. Evidence aggregation and final multi-signal forensic synthesis (Phase 3)
 
 ## Frontend integration
 
 - Contract-first via `/openapi.json`
 - `POST /api/v1/analyze` accepts `multipart/form-data` field `file`
-- Metadata results appear in `analyses[]` with `name: "metadata"`
+- Forensic results appear in `analyses[]` with `name` set to `"metadata"`, `"ela"`, `"noise"`, `"frequency"`, and `"regional"`
+- Regional anomaly details are in `analyses[name=regional].details`
+- Regional visualization is in `analyses[name=regional].details.visualization_data_url`
 - Configure `CORS_ORIGINS` for the frontend developer’s Vite origin
 - Do not modify the `frontend/` tree from the backend agent

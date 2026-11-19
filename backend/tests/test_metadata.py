@@ -141,9 +141,8 @@ def test_api_metadata_integration(client: TestClient) -> None:
     payload = response.json()
     model = AnalyzeResponse.model_validate(payload)
 
-    assert model.phase == "phase_2a"
-    assert len(model.analyses) == 1
-    meta = model.analyses[0]
+    assert model.phase in {"phase_2a", "phase_2b", "phase_2c", "phase_2d", "phase_2e"}
+    meta = next(a for a in model.analyses if a.name == "metadata")
     assert meta.name == "metadata"
     assert meta.status == "completed"
     assert meta.details is not None
