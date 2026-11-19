@@ -1,0 +1,317 @@
+import { REGION_IDS } from '../constants/assets';
+import {
+  DomainObservationBlock,
+  FrequencySpectrumPoint,
+  ImageForensicResult,
+  RegionObservation,
+} from '../types/forensics';
+import { generateId, stripSensitiveMetadata } from '../utils/cryptoAndValidation';
+import { fetchWithTimeout, ForensicApiError } from './api';
+
+/**
+ * Submits an image file to the FastAPI backend at POST /api/v1/analyze.
+ * Uses multipart FormData without setting manual Content-Type headers so the browser
+ * supplies the correct multipart boundary.
+ * Never fabricates results on failure.
+ */
+export async function submitImageForForensicAnalysis(
+  file: File,
+  apiBaseUrl: string
+): Promise<ImageForensicResult> {
+  const normalizedBase = apiBaseUrl.trim().replace(/\/+$/, '');
+  const formData = new FormData();
+  formData.append('file', file, file.name);
+
+  const response = await fetchWithTimeout(
+    `${normalizedBase}/api/v1/analyze`,
+    {
+      method: 'POST',
+      body: formData,
+    },
+    60000
+  );
+
+  if (!response.ok) {
+    let detail = `Forensic engine returned HTTP ${response.status}.`;
+    try {
+      const errorJson = (await response.json()) as { detail?: string | Array<{ msg?: string }> };
+      if (typeof errorJson.detail === 'string') {
+        detail = errorJson.detail;
+      } else if (Array.isArray(errorJson.detail) && errorJson.detail[0]?.msg) {
+        detail = errorJson.detail[0].msg;
+      }
+    } catch {
+      // Keep default status detail
+    }
+
+    throw new ForensicApiError(
+      detail,
+      response.status >= 400 && response.status < 500 ? 'VALIDATION_ERROR' : 'SERVER_ERROR',
+      response.status
+    );
+  }
+
+  let raw: Record<string, unknown>;
+  try {
+    raw = (await response.json()) as Record<string, unknown>;
+  } catch {
+    throw new ForensicApiError(
+      'Forensic engine returned a non-JSON payload that could not be parsed.',
+      'INVALID_RESPONSE',
+      response.status
+    );
+  }
+
+  return normalizeBackendAnalysisResponse(raw);
+}
+
+function asStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (typeof item === 'string') return item;
+      if (item && typeof item === 'object' && 'description' in item) {
+        return String((item as Record<string, unknown>).description);
+      }
+      if (item && typeof item === 'object' && 'message' in item) {
+        return String((item as Record<string, unknown>).message);
+      }
+      return '';
+    })
+    .filter(Boolean);
+}
+
+function toRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+export function normalizeBackendAnalysisResponse(
+  raw: Record<string, unknown>
+): ImageForensicResult {
+  const analysisId =
+    typeof raw.analysis_id === 'string'
+      ? raw.analysis_id
+      : typeof raw.id === 'string'
+        ? raw.id
+        : generateId('ANL');
+
+  const analyzedAt =
+    typeof raw.timestamp === 'string' ? raw.timestamp : new Date().toISOString();
+
+  const engineVersion =
+    typeof raw.engine_version === 'string'
+      ? raw.engine_version
+      : typeof raw.version === 'string'
+        ? raw.version
+        : 'FastAPI Forensic Engine';
+
+  const metadataRaw = toRecord(raw.metadata ?? raw.exif ?? toRecord(raw.modules).metadata);
+  const { sanitized: sanitizedMetadata, gpsRemoved } = stripSensitiveMetadata(metadataRaw);
+
+  const elaRaw = toRecord(raw.ela ?? raw.compression ?? toRecord(raw.modules).ela);
+  const noiseRaw = toRecord(raw.noise ?? raw.noise_residual ?? toRecord(raw.modules).noise);
+  const freqRaw = toRecord(raw.frequency ?? raw.fft ?? toRecord(raw.modules).frequency);
+  const spatialRaw = toRecord(
+    raw.regional ?? raw.spatial ?? raw.regional_analysis ?? toRecord(raw.modules).regional
+  );
+
+  const buildDomain = (
+    domainKey: DomainObservationBlock['domainKey'],
+    title: string,
+    isIndependentDomain: boolean,
+    sourceObj: Record<string, unknown>,
+    defaultLimitations: string[]
+  ): DomainObservationBlock => {
+    const observations = [
+      ...asStringArray(sourceObj.observations),
+      ...asStringArray(sourceObj.indicators),
+      ...asStringArray(sourceObj.findings),
+    ];
+    const limitations = asStringArray(sourceObj.limitations);
+    const hasData = Object.keys(sourceObj).length > 0;
+    const { sanitized } = stripSensitiveMetadata(
+      toRecord(sourceObj.metrics ?? sourceObj.values ?? sourceObj.stats ?? sourceObj)
+    );
+    const technicalValues: Record<string, string | number | boolean | null> = {};
+    Object.entries(sanitized)
+      .slice(0, 8)
+      .forEach(([k, v]) => {
+        if (!['observations', 'indicators', 'findings', 'limitations', 'regions'].includes(k)) {
+          technicalValues[k] = v;
+        }
+      });
+
+    return {
+      domainKey,
+      title,
+      isIndependentDomain,
+      status: hasData ? 'Available' : 'Not Available',
+      indicatorCount: observations.length,
+      summary:
+        typeof sourceObj.summary === 'string'
+          ? sourceObj.summary
+          : hasData
+            ? `${observations.length} backend observation(s) reported for ${title}.`
+            : `No structured ${title.toLowerCase()} payload returned by backend.`,
+      observations,
+      technicalValues,
+      limitations: limitations.length > 0 ? limitations : defaultLimitations,
+    };
+  };
+
+  const domains: DomainObservationBlock[] = [
+    buildDomain('metadata', 'Metadata & Provenance', true, metadataRaw, [
+      'EXIF metadata can be stripped automatically by social platforms or messaging apps.',
+      'Absence of metadata does not confirm manipulation.',
+    ]),
+    buildDomain('compression', 'Compression & Recompression', true, elaRaw, [
+      'Error Level Analysis depends strongly on prior JPEG save quality and resaving history.',
+      'Uniform high-contrast edges can exhibit elevated residuals naturally.',
+    ]),
+    buildDomain('noise', 'Noise & Texture', true, noiseRaw, [
+      'Camera ISO, optical lens softness, and in-camera denoising produce natural regional noise variance.',
+    ]),
+    buildDomain('frequency', 'Frequency Spectrum', true, freqRaw, [
+      'Resizing, sharpening, and sensor demosaicing introduce periodic frequency patterns.',
+    ]),
+    buildDomain('spatial', 'Spatial Consistency (Supporting Observation)', false, spatialRaw, [
+      'Spatial consistency aggregates regional contrast across existing signals and is NOT an independent evidence domain.',
+    ]),
+  ];
+
+  // Normalize 4x4 region grid (r0_c0 .. r3_c3)
+  const rawRegionsList = Array.isArray(spatialRaw.regions)
+    ? spatialRaw.regions
+    : Array.isArray(raw.regions)
+      ? raw.regions
+      : [];
+  const rawRegionMap = new Map<string, Record<string, unknown>>();
+  rawRegionsList.forEach((item) => {
+    const obj = toRecord(item);
+    const rid = String(obj.region_id ?? obj.regionId ?? obj.id ?? '');
+    if (rid) rawRegionMap.set(rid, obj);
+  });
+
+  const regions: RegionObservation[] = REGION_IDS.map((regionId, idx) => {
+    const row = Math.floor(idx / 4);
+    const col = idx % 4;
+    const found = rawRegionMap.get(regionId);
+    const flagged = Boolean(found?.flagged ?? found?.anomalous ?? found?.requires_review);
+    const deviation =
+      typeof found?.deviation === 'number'
+        ? found.deviation
+        : typeof found?.z_score === 'number'
+          ? found.z_score
+          : undefined;
+    const neighborContrast =
+      typeof found?.neighbor_contrast === 'number' ? found.neighbor_contrast : undefined;
+
+    return {
+      regionId,
+      row,
+      col,
+      flagged,
+      reviewLevel: flagged
+        ? 'Requires Review'
+        : deviation !== undefined && Math.abs(deviation) > 1.5
+          ? 'Elevated'
+          : 'Nominal',
+      deviationIndex: deviation,
+      neighborContrast,
+      signals: asStringArray(found?.signals ?? found?.domains),
+      observations: asStringArray(found?.observations ?? found?.reasons),
+      limitations: [
+        'Regional metrics compare statistical features against neighboring tiles; scene texture or lighting transitions can produce legitimate deviations.',
+      ],
+    };
+  });
+
+  const visualizationsRaw = toRecord(raw.visualizations ?? raw.artifacts);
+  const extractImg = (val: unknown): string | null => {
+    if (typeof val !== 'string' || !val.trim()) return null;
+    if (val.startsWith('data:image/') || val.startsWith('http://') || val.startsWith('https://')) {
+      return val;
+    }
+    return `data:image/png;base64,${val}`;
+  };
+
+  const independentDomainsAvailable = domains.filter(
+    (d) => d.isIndependentDomain && d.status === 'Available'
+  ).length;
+  const regionsRequiringReview = regions.filter((r) => r.flagged).length;
+
+  const summaryRaw = toRecord(raw.summary ?? raw.synthesis);
+  const summaryObservations = [
+    ...asStringArray(summaryRaw.observations),
+    ...asStringArray(raw.observations),
+  ];
+
+  const frequencyProfile: FrequencySpectrumPoint[] = Array.isArray(freqRaw.spectrum)
+    ? freqRaw.spectrum
+        .map((pt, i) => {
+          const obj = toRecord(pt);
+          return {
+            band: String(obj.band ?? obj.label ?? `F${i + 1}`),
+            magnitude: Number(obj.magnitude ?? obj.value ?? 0),
+          };
+        })
+        .filter((p) => !Number.isNaN(p.magnitude))
+    : [];
+
+  return {
+    analysisId,
+    analyzedAt,
+    isDemoData: false,
+    engineVersion,
+    source: 'backend_api',
+    completionStatus: independentDomainsAvailable > 0 ? 'Completed' : 'Partial',
+    independentDomainsAvailable,
+    regionsRequiringReview,
+    evidenceStrengthDescriptor:
+      typeof summaryRaw.evidence_strength === 'string'
+        ? summaryRaw.evidence_strength
+        : 'Heuristic forensic indicators available — human review required',
+    summaryObservations:
+      summaryObservations.length > 0
+        ? summaryObservations
+        : ['Backend returned forensic payload. Inspect individual domain tabs for observed indicators.'],
+    limitations:
+      asStringArray(summaryRaw.limitations).length > 0
+        ? asStringArray(summaryRaw.limitations)
+        : [
+            'Heuristic analysis is not calibrated to produce a statistical probability of authenticity.',
+            'Spatial Consistency is a supporting regional observation and not an independent evidence domain.',
+          ],
+    recommendedManualChecks:
+      asStringArray(summaryRaw.recommended_checks).length > 0
+        ? asStringArray(summaryRaw.recommended_checks)
+        : [
+            'Cross-reference image provenance with original capture source or camera raw file if available.',
+            'Inspect flagged regions at 200%+ magnification for edge, shadow, and lighting continuity.',
+          ],
+    alternativeExplanations: [
+      'Routine platform recompression (WhatsApp, X, Instagram) or export resizing.',
+      'Standard camera HDR merging, computational night mode, or lens distortion correction.',
+    ],
+    sanitizedMetadata,
+    gpsStrippedNotice: gpsRemoved,
+    domains,
+    regions,
+    frequencyProfile,
+    visualizations: {
+      elaDataUrl: extractImg(visualizationsRaw.ela ?? elaRaw.image_base64 ?? elaRaw.visualization),
+      noiseDataUrl: extractImg(
+        visualizationsRaw.noise ?? noiseRaw.image_base64 ?? noiseRaw.visualization
+      ),
+      frequencyDataUrl: extractImg(
+        visualizationsRaw.frequency ?? freqRaw.image_base64 ?? freqRaw.visualization
+      ),
+      regionalHeatmapDataUrl: extractImg(
+        visualizationsRaw.regional ?? spatialRaw.image_base64 ?? spatialRaw.visualization
+      ),
+    },
+    rawResponse: raw,
+  };
+}

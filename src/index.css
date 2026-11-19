@@ -1,0 +1,238 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --color-tl-bg: var(--tl-bg);
+  --color-tl-bg-secondary: var(--tl-bg-secondary);
+  --color-tl-panel: var(--tl-panel);
+  --color-tl-elevated: var(--tl-elevated);
+  --color-tl-border: var(--tl-border);
+  --color-tl-border-strong: var(--tl-border-strong);
+  --color-tl-cyan: var(--tl-cyan);
+  --color-tl-ice: var(--tl-ice);
+  --color-tl-success: var(--tl-success);
+  --color-tl-caution: var(--tl-caution);
+  --color-tl-alert: var(--tl-alert);
+  --color-tl-muted: var(--tl-muted);
+  --color-tl-text: var(--tl-text);
+}
+
+:root {
+  --tl-bg: #F6F5F0;
+  --tl-bg-secondary: #ECEAE2;
+  --tl-panel: #FFFFFF;
+  --tl-elevated: #F2F0E9;
+  --tl-border: #DAD6CB;
+  --tl-border-strong: #B8B2A2;
+  --tl-cyan: #147785;
+  --tl-ice: #2A5B84;
+  --tl-success: #1E7A4C;
+  --tl-caution: #A6610C;
+  --tl-alert: #B82A3B;
+  --tl-muted: #595E66;
+  --tl-text: #121417;
+}
+
+.dark {
+  --tl-bg: #0B0C0E;
+  --tl-bg-secondary: #111316;
+  --tl-panel: #16181C;
+  --tl-elevated: #1E2127;
+  --tl-border: #282C34;
+  --tl-border-strong: #3E4552;
+  --tl-cyan: #54BDC9;
+  --tl-ice: #8BB4D9;
+  --tl-success: #6BC99A;
+  --tl-caution: #E5AA46;
+  --tl-alert: #E3646E;
+  --tl-muted: #8E94A0;
+  --tl-text: #F1F2F4;
+}
+
+.high-contrast:not(.dark) {
+  --tl-bg: #FFFFFF;
+  --tl-bg-secondary: #F0EFEA;
+  --tl-panel: #FFFFFF;
+  --tl-elevated: #E8E5DC;
+  --tl-border: #8E8A80;
+  --tl-border-strong: #55524B;
+  --tl-muted: #3A3F47;
+  --tl-text: #000000;
+}
+
+.high-contrast.dark {
+  --tl-bg: #050607;
+  --tl-bg-secondary: #0C0D10;
+  --tl-panel: #121418;
+  --tl-elevated: #1A1D24;
+  --tl-border: #3B414D;
+  --tl-border-strong: #5B6475;
+  --tl-muted: #B4BAC6;
+  --tl-text: #FFFFFF;
+}
+
+html {
+  font-family: var(--font-sans);
+  background-color: var(--tl-bg);
+  color: var(--tl-text);
+  scroll-behavior: smooth;
+}
+
+html.text-scale-large {
+  font-size: 112.5%;
+}
+
+html.text-scale-compact {
+  font-size: 93.75%;
+}
+
+body {
+  background-color: var(--tl-bg);
+  color: var(--tl-text);
+  overflow-x: hidden;
+  letter-spacing: 0.004em;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+h1, h2, h3, .font-display {
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 48;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Precision Forensic Scanline Animation */
+@keyframes forensicScan {
+  0% {
+    transform: translateY(-120%);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.95;
+  }
+  88% {
+    opacity: 0.95;
+  }
+  100% {
+    transform: translateY(950%);
+    opacity: 0;
+  }
+}
+
+@keyframes forensicSweep {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.4;
+  }
+  75% {
+    opacity: 0.4;
+  }
+  100% {
+    transform: translateX(220%);
+    opacity: 0;
+  }
+}
+
+@keyframes svgSignalFlow {
+  0% {
+    stroke-dashoffset: 32;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes forensicShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes radarSweep {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-forensic-scan {
+  animation: forensicScan 4.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.animate-forensic-sweep {
+  animation: forensicSweep 6.5s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+.animate-svg-flow {
+  stroke-dasharray: 5 5;
+  animation: svgSignalFlow 1.8s linear infinite;
+}
+
+.animate-radar-sweep {
+  animation: radarSweep 2.4s linear infinite;
+}
+
+.forensic-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--tl-panel) 25%,
+    var(--tl-elevated) 50%,
+    var(--tl-panel) 75%
+  );
+  background-size: 200% 100%;
+  animation: forensicShimmer 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-forensic-scan,
+  .animate-forensic-sweep,
+  .animate-svg-flow,
+  .animate-radar-sweep,
+  .forensic-shimmer {
+    animation: none;
+  }
+}
+
+.reduced-motion *,
+.reduced-motion *::before,
+.reduced-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+/* Custom subtle scrollbars for dark workstation */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-track {
+  background: var(--tl-bg-secondary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--tl-border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--tl-muted);
+}
+
+/* Focus visibility */
+:focus-visible {
+  outline: 2px solid var(--tl-cyan);
+  outline-offset: 2px;
+}

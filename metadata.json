@@ -1,0 +1,6 @@
+{
+  "name": "TruthLens",
+  "description": "Multimodal digital forensics investigation workstation for examining media authenticity indicators, evidence integrity, and explainable forensic reporting.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
