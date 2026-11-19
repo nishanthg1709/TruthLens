@@ -149,7 +149,9 @@ def test_1_all_domains_available_converging() -> None:
     )
 
     details = synthesize_evidence([meta, ela, noise, freq, reg], image_format="JPEG")
-    assert details.evidence_summary.domains_available == 5
+    # 4 independent evidence domains (Metadata, Compression, Noise, Frequency); Spatial is supporting
+    assert details.evidence_summary.domains_available == 4
+    assert len(details.domains) == 5
     assert details.evidence_summary.relationship == "converging_observations"
     assert "r0_c0" in details.regional_synthesis.multi_domain_regions
     assert len(details.key_observations) >= 4
@@ -621,7 +623,8 @@ def test_17_api_integration_post_analyze(client: TestClient) -> None:
 
     details = synthesis_item.details
     assert isinstance(details, SynthesisDetails)
-    assert details.evidence_summary.domains_available == 5
+    # 4 independent domains available, while all 5 domains are present in details.domains
+    assert details.evidence_summary.domains_available == 4
     assert len(details.domains) == 5
     assert len(details.regional_synthesis.tiles) == 16
 
