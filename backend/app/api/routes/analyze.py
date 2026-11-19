@@ -1,4 +1,4 @@
-"""Image analysis endpoint (Phase 2E: validation + SHA-256 + metadata + ELA + Noise + Frequency + Regional Anomaly)."""
+"""Image analysis endpoint (Phase 3: validation + SHA-256 + 5 forensic modules + Evidence Synthesis)."""
 
 from fastapi import APIRouter, File, UploadFile
 
@@ -11,21 +11,18 @@ from app.services.hashing import compute_sha256
 from app.services.metadata import build_metadata_analysis
 from app.services.noise import build_noise_analysis
 from app.services.regional import build_regional_analysis
+from app.services.synthesis import build_synthesis_analysis
 from app.services.validation import validate_image
 
 router = APIRouter(prefix="/api/v1", tags=["analyze"])
 
-PHASE_2E_LIMITATIONS = [
-    "Evidence aggregation and forensic synthesis (Phase 3) have not yet been performed.",
-]
-
 
 @router.post("/analyze", response_model=AnalyzeResponse)
 async def analyze_image(file: UploadFile = File(...)) -> AnalyzeResponse:
-    """Validate an uploaded image and return Phase 2E analysis results.
+    """Validate an uploaded image and return Phase 3 forensic analysis results.
 
-    Phase 2E adds Regional Anomaly Analysis alongside Frequency Domain, Noise Residual,
-    Error Level Analysis, and EXIF/metadata extraction.
+    Phase 3 adds Evidence Aggregation & Synthesis across Metadata, Error Level Analysis (ELA),
+    Noise Residual, 2D FFT Frequency Spectrum, and Spatial Consistency.
     This endpoint never invents authenticity scores or fabricated forensic findings.
     """
     if file is None:
@@ -86,10 +83,33 @@ async def analyze_image(file: UploadFile = File(...)) -> AnalyzeResponse:
         has_transparency=validated.has_transparency,
     )
 
+    synthesis_analysis = build_synthesis_analysis(
+        analyses=[
+            metadata_analysis,
+            ela_analysis,
+            noise_analysis,
+            frequency_analysis,
+            regional_analysis,
+        ],
+        image_properties=properties,
+        image_format=validated.format,
+    )
+
+    synthesis_summary = (
+        synthesis_analysis.details.evidence_summary.synthesis_statement
+        if synthesis_analysis.details and hasattr(synthesis_analysis.details, "evidence_summary")
+        else "Forensic analysis and evidence synthesis completed."
+    )
+    synthesis_limitations = (
+        synthesis_analysis.limitations
+        if synthesis_analysis.limitations
+        else []
+    )
+
     return AnalyzeResponse(
         success=True,
         application="TruthLens",
-        phase="phase_2e",
+        phase="phase_3",
         image_properties=properties,
         sha256=digest,
         analyses=[
@@ -98,15 +118,11 @@ async def analyze_image(file: UploadFile = File(...)) -> AnalyzeResponse:
             noise_analysis,
             frequency_analysis,
             regional_analysis,
+            synthesis_analysis,
         ],
         assessment=Assessment(
-            status="INCOMPLETE",
-            summary=(
-                "Image validation, identification, metadata analysis, "
-                "error level analysis, noise residual analysis, "
-                "frequency domain analysis, and regional anomaly analysis completed. "
-                "Cross-module evidence aggregation and forensic synthesis (Phase 3) have not yet been performed."
-            ),
-            limitations=list(PHASE_2E_LIMITATIONS),
+            status="COMPLETE",
+            summary=synthesis_summary,
+            limitations=list(synthesis_limitations),
         ),
     )

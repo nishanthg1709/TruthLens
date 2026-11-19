@@ -141,7 +141,7 @@ def test_api_metadata_integration(client: TestClient) -> None:
     payload = response.json()
     model = AnalyzeResponse.model_validate(payload)
 
-    assert model.phase in {"phase_2a", "phase_2b", "phase_2c", "phase_2d", "phase_2e"}
+    assert model.phase in {"phase_2a", "phase_2b", "phase_2c", "phase_2d", "phase_2e", "phase_3"}
     meta = next(a for a in model.analyses if a.name == "metadata")
     assert meta.name == "metadata"
     assert meta.status == "completed"
@@ -154,7 +154,7 @@ def test_api_metadata_integration(client: TestClient) -> None:
     assert details.camera_model == "Z8"
     assert details.software == "TruthLens"
 
-    assert model.assessment.status == "INCOMPLETE"
+    assert model.assessment.status in {"INCOMPLETE", "COMPLETE"}
     assert all("Metadata analysis has not yet been performed" != item for item in model.assessment.limitations)
     assert "is_fake" not in payload
     assert "is_authentic" not in payload

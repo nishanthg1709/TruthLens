@@ -32,3 +32,8 @@ def test_openapi_schema_endpoint(client: TestClient) -> None:
     assert "MetadataDetails" in components
     assert "RegionalAnomalyDetails" in components
     assert "RegionalAnomalyItem" in components
+    assert "SynthesisDetails" in components
+    assert "EvidenceSummary" in components
+    assert "EvidenceDomainItem" in components
+    assert "KeyObservation" in components
+    assert "RegionalSynthesis" in components

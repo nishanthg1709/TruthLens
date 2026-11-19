@@ -161,7 +161,7 @@ def compute_noise_residual(
 
             # Regional residual statistics (shared grid partition)
             tiles = partition_grid(orig_rgb.width, orig_rgb.height, grid_size)
-            regional_metrics: list[RegionalMetric] = []
+            regional_metrics: list[RegionalNoiseMetric] = []
             regional_means: list[float] = []
             regional_stds: list[float] = []
 

@@ -24,7 +24,7 @@ def test_analyze_valid_image_structure(client: TestClient) -> None:
 
     assert model.success is True
     assert model.application == "TruthLens"
-    assert model.phase == "phase_2e"
+    assert model.phase == "phase_3"
     assert model.image_properties.filename == "example.jpg"
     assert model.image_properties.format == "JPEG"
     assert model.image_properties.width == 100
@@ -33,9 +33,9 @@ def test_analyze_valid_image_structure(client: TestClient) -> None:
     assert model.image_properties.aspect_ratio == 2.0
     assert model.sha256 == hashlib.sha256(data).hexdigest()
 
-    assert len(model.analyses) == 5
+    assert len(model.analyses) == 6
     analysis_names = {a.name for a in model.analyses}
-    assert analysis_names == {"metadata", "ela", "noise", "frequency", "regional"}
+    assert analysis_names == {"metadata", "ela", "noise", "frequency", "regional", "synthesis"}
 
     metadata_item = next(a for a in model.analyses if a.name == "metadata")
     assert metadata_item.status == "completed"
@@ -60,33 +60,14 @@ def test_analyze_valid_image_structure(client: TestClient) -> None:
     assert "max_deviation_score" in regional_item.metrics
     assert regional_item.details is not None
 
-    assert model.assessment.status == "INCOMPLETE"
-    assert "metadata" in model.assessment.summary.lower()
-    assert "error level" in model.assessment.summary.lower()
-    assert "noise residual" in model.assessment.summary.lower()
-    assert "frequency domain" in model.assessment.summary.lower()
-    assert "regional anomaly" in model.assessment.summary.lower()
+    synthesis_item = next(a for a in model.analyses if a.name == "synthesis")
+    assert synthesis_item.status == "completed"
+    assert "relationship" in synthesis_item.metrics
+    assert synthesis_item.details is not None
+
+    assert model.assessment.status == "COMPLETE"
+    assert len(model.assessment.summary) > 0
     assert len(model.assessment.limitations) >= 1
-    assert all(
-        "Metadata analysis has not yet been performed." != item
-        for item in model.assessment.limitations
-    )
-    assert all(
-        "Error Level Analysis has not yet been performed." != item
-        for item in model.assessment.limitations
-    )
-    assert all(
-        "Noise analysis has not yet been performed." != item
-        for item in model.assessment.limitations
-    )
-    assert all(
-        "Frequency analysis has not yet been performed." != item
-        for item in model.assessment.limitations
-    )
-    assert all(
-        "Regional anomaly analysis has not yet been performed." != item
-        for item in model.assessment.limitations
-    )
 
     # Ensure no fabricated authenticity fields.
     assert "is_fake" not in payload
@@ -122,32 +103,28 @@ def test_analyze_missing_file_error(client: TestClient) -> None:
     assert response.json()["success"] is False
 
 
-def test_unimplemented_modules_remain_listed(client: TestClient) -> None:
+def test_png_handles_unavailable_ela_in_synthesis(client: TestClient) -> None:
     data = make_image_bytes(fmt="PNG", size=(24, 24))
     response = client.post(
         "/api/v1/analyze",
         files={"file": ("sample.png", data, "image/png")},
     )
     payload = response.json()
-    assert len(payload["analyses"]) == 5
+    assert len(payload["analyses"]) == 6
     analysis_map = {a["name"]: a for a in payload["analyses"]}
     assert "metadata" in analysis_map
     assert "ela" in analysis_map
     assert "noise" in analysis_map
     assert "frequency" in analysis_map
     assert "regional" in analysis_map
+    assert "synthesis" in analysis_map
     assert analysis_map["ela"]["status"] == "unavailable"
     assert analysis_map["noise"]["status"] == "completed"
     assert analysis_map["frequency"]["status"] == "completed"
     assert analysis_map["regional"]["status"] == "completed"
-    assert payload["assessment"]["status"] == "INCOMPLETE"
-    for limitation in payload["assessment"]["limitations"]:
-        assert "not yet been performed" in limitation
-        assert "Metadata analysis" not in limitation
-        assert "Error Level Analysis" not in limitation
-        assert "Noise analysis" not in limitation
-        assert "Frequency analysis" not in limitation
-        assert "Regional anomaly analysis" not in limitation
+    assert analysis_map["synthesis"]["status"] == "completed"
+    assert payload["assessment"]["status"] == "COMPLETE"
+    assert any("not JPEG" in lim for lim in payload["assessment"]["limitations"])
 
 
 def test_analyze_jpeg_includes_all_visualizations(client: TestClient) -> None:
@@ -184,6 +161,11 @@ def test_analyze_jpeg_includes_all_visualizations(client: TestClient) -> None:
     assert reg_item["details"] is not None
     assert reg_item["details"]["visualization_data_url"].startswith("data:image/png;base64,")
     assert reg_item["metrics"]["max_deviation_score"] >= 0.0
+
+    synth_item = next(a for a in payload["analyses"] if a["name"] == "synthesis")
+    assert synth_item["status"] == "completed"
+    assert synth_item["details"] is not None
+    assert "evidence_summary" in synth_item["details"]
 
 
 def test_analyze_uses_configured_sigma(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:

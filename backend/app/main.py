@@ -17,10 +17,12 @@ def create_app() -> FastAPI:
         version=settings.app_version,
         description=(
             "TruthLens — See beyond the image. Verify what is real.\n\n"
-            "Phase 2A provides image validation, property extraction, SHA-256 "
-            "fingerprinting, and EXIF/metadata analysis. ELA, noise, frequency, "
-            "and regional anomaly analyses are not yet implemented. Exact GPS "
-            "coordinates are withheld by default."
+            "Phase 3 provides comprehensive forensic analysis and evidence aggregation, "
+            "synthesizing metadata/EXIF provenance, JPEG Error Level Analysis (ELA), "
+            "noise residual statistics, 2D FFT frequency domain characteristics, and "
+            "regional anomaly spatial consistency. Exact GPS coordinates are withheld "
+            "by default. TruthLens provides explainable statistical observations without "
+            "producing speculative authenticity percentages or binary manipulation verdicts."
         ),
         docs_url="/docs",
         openapi_url="/openapi.json",

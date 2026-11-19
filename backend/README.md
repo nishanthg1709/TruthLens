@@ -2,22 +2,23 @@
 
 FastAPI service for image forensic analysis.
 
-**Phase:** `phase_2e`  
+**Phase:** `phase_3`  
 **Tagline:** See beyond the image. Verify what is real.
 
 ## Overview
 
-Phase 2E provides:
+Phase 3 provides a unified, explainable evidence aggregation engine built on top of five modular forensic analytical services:
 
 1. Safe image upload intake (in-memory)
 2. Format and integrity validation
 3. Image property extraction
 4. SHA-256 fingerprinting of the original file bytes
-5. EXIF / metadata extraction and interpretation
-6. Error Level Analysis (ELA) engine for JPEG images
+5. EXIF / metadata extraction and provenance interpretation
+6. Error Level Analysis (ELA) engine for JPEG lossy compression
 7. Noise residual analysis for JPEG, PNG, and WEBP images
 8. Frequency-domain analysis using 2D Fast Fourier Transform (FFT)
 9. Regional anomaly analysis across spatial grid partitions
+10. Evidence Aggregation & Synthesis Engine across five independent forensic domains
 
 AI image detection, binary fake/authentic classifications, and synthetic manipulation probabilities are **strictly not implemented** and are never fabricated.
 
@@ -30,7 +31,7 @@ backend/
 │   ├── api/routes/          # HTTP endpoints (analyze, health)
 │   ├── core/                # Settings and error handling
 │   ├── models/              # Pydantic response contracts
-│   ├── services/            # Validation, hashing, metadata, ELA, noise, frequency, regional
+│   ├── services/            # Validation, hashing, metadata, ELA, noise, frequency, regional, synthesis
 │   └── utils/               # Image I/O helpers and grid partitioner
 ├── tests/
 ├── requirements.txt
@@ -308,6 +309,33 @@ If $\text{MAD} = 0$, standard deviation is used as fallback. If $\sigma = 0$ (e.
 - Legend color bar at the bottom indicating scale and explicit non-tampering disclaimer.
 - Base64 encoded as PNG data URL (`visualization_data_url`).
 
+## Evidence Aggregation & Synthesis Engine (Phase 3)
+
+### Methodology & Principles
+
+The Phase 3 Synthesis Engine aggregates individual forensic measurements into five distinct domains:
+1. **Metadata & Provenance:** Camera hardware tags, timestamps, editing/export software signatures, metadata completeness. (Absence of metadata is standard for web/social media images and is never treated as manipulation).
+2. **Compression & Recompression (ELA):** JPEG recompression error magnitudes and regional error spread relative to an analysis baseline.
+3. **Noise & Texture:** Gaussian low-pass residual standard deviation and regional noise dispersion.
+4. **Frequency Spectrum:** 2D Fast Fourier Transform radial energy distribution (low, mid, high bands), centroid, and spectral entropy.
+5. **Spatial Consistency:** Regional grid anomaly scores, multi-feature deviation, and spatial neighbor contrast.
+
+### Correlated Feature Weighting
+
+To prevent multi-collinear metrics (e.g. `mean_gradient`, `std_gradient`, and `edge_density` from gradient magnitude; `noise_residual_std` and `noise_mean_abs` from residual arrays) from dominating composite scores, Phase 3 groups correlated measurements into domain-level scores first. Texture metrics are evaluated collectively as a single Texture domain, preventing them from tripling their weight in multi-domain synthesis.
+
+### Cross-Domain Relationship Labels
+
+- `converging_observations`: Multiple independent evidence domains exhibit notable statistical variation with confirmed spatial convergence in the same physical regions.
+- `isolated_observation`: Exactly one evidence domain exhibits a notable statistical pattern, while all other independent domains remain within typical distributions.
+- `mixed_observations`: Multiple evidence domains exhibit statistical observations, but without spatial convergence in the same regions.
+- `no_notable_variation`: All evaluated domains display uniform, expected distributions.
+- `insufficient_evidence`: Fewer than two independent domains were available for evaluation.
+
+### Structured Key Observations
+
+Each generated observation includes a unique deterministic ID (`OBS-META-001`, `OBS-ELA-001`, `OBS-NOISE-001`, `OBS-FREQ-001`, `OBS-SPAT-001`, `OBS-CROSS-001`), supporting numerical metrics, region IDs if applicable, neutral interpretations, and documented limitations.
+
 ## Implemented forensic modules
 
 1. Image validation and properties
@@ -317,17 +345,25 @@ If $\text{MAD} = 0$, standard deviation is used as fallback. If $\sigma = 0$ (e.
 5. Noise residual analysis
 6. Frequency domain analysis (2D FFT)
 7. Regional anomaly analysis
-
-## Unimplemented modules
-
-1. Evidence aggregation and final multi-signal forensic synthesis (Phase 3)
+8. Evidence aggregation & synthesis engine (Phase 3)
 
 ## Frontend integration
 
 - Contract-first via `/openapi.json`
 - `POST /api/v1/analyze` accepts `multipart/form-data` field `file`
-- Forensic results appear in `analyses[]` with `name` set to `"metadata"`, `"ela"`, `"noise"`, `"frequency"`, and `"regional"`
-- Regional anomaly details are in `analyses[name=regional].details`
-- Regional visualization is in `analyses[name=regional].details.visualization_data_url`
+- `phase` reports `"phase_3"`
+- `assessment.status` reports `"COMPLETE"` with dynamic synthesis summary and limitations
+- Forensic results appear in `analyses[]` with `name` set to:
+  - `"metadata"`: details in `MetadataDetails`
+  - `"ela"`: details in `ELADetails`
+  - `"noise"`: details in `NoiseDetails`
+  - `"frequency"`: details in `FrequencyDetails`
+  - `"regional"`: details in `RegionalAnomalyDetails`
+  - `"synthesis"`: details in `SynthesisDetails`
+- Visualizations:
+  - ELA: `analyses[name=ela].details.difference_image_data_url`
+  - Noise: `analyses[name=noise].details.visualization_data_url`
+  - Frequency: `analyses[name=frequency].details.visualization_data_url`
+  - Regional: `analyses[name=regional].details.visualization_data_url`
 - Configure `CORS_ORIGINS` for the frontend developer’s Vite origin
 - Do not modify the `frontend/` tree from the backend agent
