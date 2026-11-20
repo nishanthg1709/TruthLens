@@ -42,15 +42,15 @@ export const SystemStatusPage: React.FC = () => {
     },
     {
       name: 'Video Forensics Engine',
-      endpoint: 'Under Development (Not implemented)',
-      status: 'Under Development' as const,
-      note: 'Video frame analysis, temporal consistency, frame-level manipulation indicators, and video integrity examination are under development. Analysis actions are disabled.',
+      endpoint: 'Keyframe Extraction & Still-Frame Analysis',
+      status: backendConnected ? ('Operational' as const) : ('Local Tool' as const),
+      note: 'Keyframe extraction and still-frame forensic analysis via FastAPI backend. Displays timestamps, ELA, noise, and frequency characteristics.',
     },
     {
       name: 'Audio Forensics Engine',
-      endpoint: 'Under Development (Not implemented)',
-      status: 'Under Development' as const,
-      note: 'Audio integrity analysis, synthetic speech indicators, waveform examination, and audio manipulation analysis are under development. Uploads and analysis are disabled.',
+      endpoint: 'Web Audio API Acoustic Signal Engine',
+      status: 'Operational' as const,
+      note: 'Sample-accurate acoustic metrics (peak, RMS, crest factor, ZCR, clipping) with real-time waveform and spectrogram visualization.',
     },
     {
       name: 'Text & Context Analysis',
