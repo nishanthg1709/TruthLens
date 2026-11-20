@@ -82,7 +82,7 @@ export const VideoForensicsPage: React.FC = () => {
 
     // Compute SHA-256
     calculateSha256(file).then((sha256) => {
-      setVideoMeta((prev) => (prev ? { ...prev, sha256 } : null));
+      setVideoMeta((prev) => (prev ? { ...prev, sha256: sha256 ?? undefined } : null));
     });
 
     pushToast({
@@ -292,11 +292,9 @@ export const VideoForensicsPage: React.FC = () => {
       </div>
 
       {/* Disclaimer Callout */}
-      <NoticeCallout
-        title="Forensic Scope & Methodology Notice"
-        tone="info"
-        description="Frame-level forensic examination evaluates still-frame compression (ELA), sensor noise residuals, and 2D spatial frequencies. It provides localized spatial evidence and does NOT constitute full video deepfake detection or temporal manipulation classification."
-      />
+      <NoticeCallout title="Forensic Scope & Methodology Notice" tone="info">
+        Frame-level forensic examination evaluates still-frame compression (ELA), sensor noise residuals, and 2D spatial frequencies. It provides localized spatial evidence and does NOT constitute full video deepfake detection or temporal manipulation classification.
+      </NoticeCallout>
 
       {/* Video Preview & Controls */}
       {videoUrl ? (

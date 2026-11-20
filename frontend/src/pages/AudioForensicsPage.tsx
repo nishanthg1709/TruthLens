@@ -277,11 +277,9 @@ export const AudioForensicsPage: React.FC = () => {
       </div>
 
       {/* Methodology Disclaimer */}
-      <NoticeCallout
-        title="Acoustic Signal Scope Notice"
-        tone="info"
-        description="Acoustic signal diagnostics inspect verified sample amplitudes, dynamic headroom, and frequency distributions. TruthLens does not fabricate synthetic AI voice probability scores or definitive speaker authenticity verdicts."
-      />
+      <NoticeCallout title="Acoustic Signal Scope Notice" tone="info">
+        Acoustic signal diagnostics inspect verified sample amplitudes, dynamic headroom, and frequency distributions. TruthLens does not fabricate synthetic AI voice probability scores or definitive speaker authenticity verdicts.
+      </NoticeCallout>
 
       {audioUrl ? (
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">

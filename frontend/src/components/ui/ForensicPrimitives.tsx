@@ -24,6 +24,7 @@ export const StatusLabel: React.FC<{
     | 'Operational'
     | 'Under Development'
     | 'Not Yet Available'
+    | 'Unavailable'
     | 'Local Tool';
   className?: string;
 }> = ({ status, className = '' }) => {
@@ -42,6 +43,7 @@ export const StatusLabel: React.FC<{
     Queued: { color: 'text-tl-caution', glyph: '◔' },
     'Under Development': { color: 'text-tl-muted', glyph: '◌' },
     'Not Yet Available': { color: 'text-tl-muted', glyph: '○' },
+    Unavailable: { color: 'text-tl-caution', glyph: '△' },
     Planned: { color: 'text-tl-muted', glyph: '○' },
     Unanalyzed: { color: 'text-tl-muted', glyph: '○' },
     Archived: { color: 'text-tl-muted', glyph: '□' },
