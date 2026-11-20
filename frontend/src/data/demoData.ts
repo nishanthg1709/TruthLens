@@ -244,6 +244,11 @@ export const DEMO_IMAGE_ANALYSIS_RESULT: ImageForensicResult = {
     { band: '0.90', magnitude: 8, referenceBaseline: 15 },
     { band: '1.00', magnitude: 5, referenceBaseline: 12 },
   ],
+  modelStatus: {
+    available: false,
+    status: 'unavailable',
+    message: 'AI detection model unavailable — traditional forensic analysis is still active.',
+  },
   visualizations: {
     elaDataUrl: null,
     noiseDataUrl: null,

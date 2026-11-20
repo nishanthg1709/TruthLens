@@ -69,6 +69,14 @@ export interface FrequencySpectrumPoint {
   referenceBaseline?: number;
 }
 
+export interface AIModelStatus {
+  available: boolean;
+  status: 'available' | 'unavailable' | 'failed';
+  modelName?: string | null;
+  message: string;
+  warning?: string | null;
+}
+
 export interface ImageForensicResult {
   analysisId: string;
   analyzedAt: string;
@@ -88,6 +96,7 @@ export interface ImageForensicResult {
   domains: DomainObservationBlock[];
   regions: RegionObservation[];
   frequencyProfile: FrequencySpectrumPoint[];
+  modelStatus?: AIModelStatus;
   visualizations: {
     elaDataUrl?: string | null;
     noiseDataUrl?: string | null;

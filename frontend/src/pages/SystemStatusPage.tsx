@@ -33,12 +33,18 @@ export const SystemStatusPage: React.FC = () => {
 
   const engines = [
     {
-      name: 'Image Forensics Engine',
+      name: 'Image Forensics Engine (Traditional Algorithms)',
       endpoint: 'POST /api/v1/analyze',
       status: backendConnected ? ('Connected' as const) : ('Disconnected' as const),
       note: backendConnected
-        ? 'FastAPI /health confirmed. EXIF, ELA, Noise Residual, FFT, and 4×4 Regional modules ready.'
+        ? 'FastAPI /health confirmed. EXIF metadata, ELA, Noise Residual, 2D FFT, and 4×4 Regional modules active.'
         : 'Unavailable until FastAPI backend connection is confirmed.',
+    },
+    {
+      name: 'AI Image Detection Model',
+      endpoint: 'Optional Deep Learning Weights',
+      status: 'Unavailable' as const,
+      note: 'AI detection model unavailable — traditional forensic analysis is still active. Operates completely decoupled from deep learning dependencies.',
     },
     {
       name: 'Video Forensics Engine',

@@ -253,24 +253,48 @@ export const ImageForensicsPage: React.FC = () => {
     try {
       const result = await submitImageForForensicAnalysis(fileToSend, settings.apiBaseUrl);
       attachAnalysisResult(activeEvidence.id, result);
-      pushToast({
-        title: 'Forensic Analysis Completed',
-        description: `Received ${result.independentDomainsAvailable} independent domain(s) from FastAPI backend.`,
-        tone: 'success',
-      });
+      if (result.modelStatus?.status === 'failed') {
+        pushToast({
+          title: 'AI Model Notice',
+          description:
+            result.modelStatus.warning ||
+            'AI detection model unavailable — traditional forensic analysis is still active.',
+          tone: 'caution',
+        });
+      } else {
+        pushToast({
+          title: 'Forensic Analysis Completed',
+          description: `Received ${result.independentDomainsAvailable} independent domain(s) from FastAPI backend.`,
+          tone: 'success',
+        });
+      }
     } catch (err) {
-      updateEvidenceStatus(activeEvidence.id, 'Engine Unavailable');
       const message =
         err instanceof ForensicApiError
           ? err.message
           : 'TruthLens cannot reach the forensic engine. Your evidence has not been analyzed.';
-      setApiError(message);
-      void refreshBackendHealth();
-      pushToast({
-        title: 'Forensic Analysis Not Performed',
-        description: message,
-        tone: 'alert',
-      });
+
+      // If an upstream message mentions model unavailability, treat as non-fatal warning
+      if (
+        message.toLowerCase().includes('model is unavailable') ||
+        message.toLowerCase().includes('ai model')
+      ) {
+        pushToast({
+          title: 'AI Model Notice',
+          description:
+            'AI detection model unavailable — traditional forensic analysis is still active.',
+          tone: 'caution',
+        });
+      } else {
+        updateEvidenceStatus(activeEvidence.id, 'Engine Unavailable');
+        setApiError(message);
+        void refreshBackendHealth();
+        pushToast({
+          title: 'Forensic Analysis Not Performed',
+          description: message,
+          tone: 'alert',
+        });
+      }
     } finally {
       setIsAnalyzing(false);
     }
@@ -539,6 +563,27 @@ export const ImageForensicsPage: React.FC = () => {
           })}
         </ol>
       </div>
+
+      {/* AI Model Status Banner — Displayed separately from forensic results */}
+      {currentResult && (
+        <div className="rounded-md border border-tl-border/80 bg-tl-panel px-3.5 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
+          <div className="flex items-center gap-2 min-w-0">
+            <AlertTriangle className="w-4 h-4 text-tl-caution shrink-0" />
+            <span className="text-tl-text font-medium truncate">
+              {currentResult.modelStatus?.message ||
+                'AI detection model unavailable — traditional forensic analysis is still active.'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 font-mono text-[11px] shrink-0">
+            <span className="px-2 py-0.5 rounded border border-tl-caution/40 bg-tl-caution/10 text-tl-caution">
+              AI Model: {currentResult.modelStatus?.status === 'available' ? 'Available' : 'Unavailable'}
+            </span>
+            <span className="px-2 py-0.5 rounded border border-tl-cyan/40 bg-tl-cyan/10 text-tl-cyan">
+              Forensics: Active
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Backend Offline / Error Alert */}
       {(apiError || backendHealth.status === 'disconnected') && !demoMode && (
@@ -860,6 +905,22 @@ export const ImageForensicsPage: React.FC = () => {
 
                 <div className="text-xs text-tl-text bg-tl-bg-secondary border border-tl-border rounded p-2.5 leading-relaxed">
                   {currentResult.evidenceStrengthDescriptor}
+                </div>
+
+                {/* AI Model Status vs Traditional Forensics */}
+                <div className="rounded border border-tl-border bg-tl-bg-secondary p-2.5 space-y-1">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-tl-muted">AI Detection Model</span>
+                    <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-tl-caution/15 text-tl-caution border border-tl-caution/30">
+                      {currentResult.modelStatus?.status === 'available'
+                        ? 'Available'
+                        : 'Unavailable (Non-blocking)'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-tl-muted leading-relaxed">
+                    {currentResult.modelStatus?.message ||
+                      'AI detection model unavailable — traditional forensic analysis is still active.'}
+                  </p>
                 </div>
 
                 <div>

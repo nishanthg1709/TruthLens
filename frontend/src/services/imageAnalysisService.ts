@@ -1,5 +1,6 @@
 import { REGION_IDS } from '../constants/assets';
 import {
+  AIModelStatus,
   DomainObservationBlock,
   FrequencySpectrumPoint,
   ImageForensicResult,
@@ -396,6 +397,22 @@ export function normalizeBackendAnalysisResponse(
 
   const sha256 = typeof raw.sha256 === 'string' ? raw.sha256 : '';
 
+  const rawAiModel = toRecord(raw.ai_model);
+  const modelStatus: AIModelStatus = {
+    available: Boolean(rawAiModel.available),
+    status: (['available', 'unavailable', 'failed'].includes(String(rawAiModel.status))
+      ? rawAiModel.status
+      : 'unavailable') as AIModelStatus['status'],
+    modelName: typeof rawAiModel.model_name === 'string' ? rawAiModel.model_name : null,
+    message:
+      typeof raw.model_status === 'string'
+        ? raw.model_status
+        : typeof rawAiModel.message === 'string'
+          ? rawAiModel.message
+          : 'AI detection model unavailable — traditional forensic analysis is still active.',
+    warning: typeof rawAiModel.warning === 'string' ? rawAiModel.warning : null,
+  };
+
   return {
     analysisId: generateId('ANL'),
     analyzedAt: new Date().toISOString(),
@@ -405,6 +422,7 @@ export function normalizeBackendAnalysisResponse(
     completionStatus: independentDomainsAvailable > 0 ? 'Completed' : 'Partial',
     independentDomainsAvailable,
     regionsRequiringReview,
+    modelStatus,
     evidenceStrengthDescriptor:
       typeof evidenceSummary.relationship === 'string'
         ? evidenceSummary.relationship.replace(/_/g, ' ')

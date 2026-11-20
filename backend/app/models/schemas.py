@@ -323,6 +323,18 @@ class Assessment(BaseModel):
     limitations: list[str]
 
 
+class AIModelStatus(BaseModel):
+    """Status of optional AI image detection model."""
+
+    available: bool = False
+    status: Literal["available", "unavailable", "failed"] = "unavailable"
+    model_name: str | None = None
+    message: str = (
+        "AI detection model unavailable — traditional forensic analysis is still active."
+    )
+    warning: str | None = None
+
+
 class AnalyzeResponse(BaseModel):
     """Structured analyze response."""
 
@@ -341,6 +353,10 @@ class AnalyzeResponse(BaseModel):
     sha256: str = Field(min_length=64, max_length=64)
     analyses: list[AnalysisItem] = Field(default_factory=list)
     assessment: Assessment
+    ai_model: AIModelStatus = Field(default_factory=AIModelStatus)
+    model_status: str = Field(
+        default="AI detection model unavailable — traditional forensic analysis is still active."
+    )
 
 
 class ErrorDetail(BaseModel):

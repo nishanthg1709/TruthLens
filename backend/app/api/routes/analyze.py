@@ -1,10 +1,17 @@
 """Image analysis endpoint (Phase 3: validation + SHA-256 + 5 forensic modules + Evidence Synthesis)."""
 
+import logging
 from fastapi import APIRouter, File, UploadFile
 
 from app.core.config import get_settings
 from app.core.errors import ValidationFailedError
-from app.models.schemas import AnalyzeResponse, Assessment, ImageProperties
+from app.models.schemas import (
+    AIModelStatus,
+    AnalyzeResponse,
+    Assessment,
+    ImageProperties,
+)
+from app.services.ai_model import check_ai_model_status, run_ai_detection
 from app.services.ela import build_ela_analysis
 from app.services.frequency import build_frequency_analysis
 from app.services.hashing import compute_sha256
@@ -13,6 +20,8 @@ from app.services.noise import build_noise_analysis
 from app.services.regional import build_regional_analysis
 from app.services.synthesis import build_synthesis_analysis
 from app.services.validation import validate_image
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1", tags=["analyze"])
 
@@ -106,6 +115,18 @@ async def analyze_image(file: UploadFile = File(...)) -> AnalyzeResponse:
         else []
     )
 
+    # Optional AI detection check: Never block forensic analysis or fabricate scores if unavailable/failed
+    try:
+        ai_model_status, _ = run_ai_detection(data, validated.format)
+    except Exception as exc:
+        logger.warning("Optional AI detection model execution failed gracefully: %s", exc)
+        ai_model_status = AIModelStatus(
+            available=False,
+            status="failed",
+            message="AI detection model unavailable — traditional forensic analysis is still active.",
+            warning=str(exc),
+        )
+
     return AnalyzeResponse(
         success=True,
         application="TruthLens",
@@ -125,4 +146,6 @@ async def analyze_image(file: UploadFile = File(...)) -> AnalyzeResponse:
             summary=synthesis_summary,
             limitations=list(synthesis_limitations),
         ),
+        ai_model=ai_model_status,
+        model_status=ai_model_status.message,
     )
